@@ -27,3 +27,7 @@ vision:
   model: "local-vision-model"
   timeout_seconds: 180
   prompt_version: "image_librarian_v1"
+  # pydantic_ai validates structured records before they are written to SQLite.
+  # legacy_json keeps the old direct requests/json.loads path.
+  structured_output: "pydantic_ai"
+  fallback_to_legacy_json: true
