@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block body %}
+<h1>Images</h1>
+<div class="card"><form method="get"><label>Search</label><input name="q" value="{{ q }}"><label>Status</label><select name="status"><option value="">All</option>{% for s in ['NEW','DONE','FAILED','NEEDS_REPROCESS','PROCESSING','REMOVED_FROM_INDEX'] %}<option value="{{s}}" {% if status==s %}selected{% endif %}>{{s}}</option>{% endfor %}</select><button>Search</button></form></div>
+<div class="card">{% for r in rows %}<div class="grid row"><div>{% if r.thumbnail_path %}<img class="thumb" src="/thumb/{{r.id}}.jpg">{% endif %}</div><div><b>{{ r.filename }}</b><br><small>{{ r.path }}</small><br>{{ r.short_caption or '' }}<br><small>{{ r.tags or '' }}</small>{% if r.error_message %}<p class="bad">{{ r.error_message }}</p>{% endif %}</div><div>{{ r.status }}</div><div><a href="/images/{{r.id}}">View / Edit</a></div></div>{% endfor %}</div>
+{% endblock %}
