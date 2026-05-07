@@ -6,4 +6,5 @@ pillow==11.1.0
 pillow-heif==0.21.0
 requests==2.32.3
 pydantic==2.10.5
+pydantic-ai>=0.0.24
 aiofiles==24.1.0
