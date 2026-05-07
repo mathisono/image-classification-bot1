@@ -2,7 +2,7 @@
 
 A local-first image cataloging tool for building a searchable database from a large private image archive.
 
-This project is designed for the first working milestone of an OpenClaw image-librarian agent: scan folders, create a SQLite index, generate thumbnails, optionally ask a local vision model to describe each image, and provide a simple browser GUI for viewing, editing, retrying, and removing bad index records.
+This project is designed for the first working milestone of an OpenClaw image-librarian agent: scan folders, create a SQLite index, generate thumbnails, optionally ask a local vision model to describe each image, validate the model output with Pydantic AI, and provide a simple browser GUI for viewing, editing, retrying, and removing bad index records.
 
 The current version intentionally keeps the workflow simple. Temporal, Qdrant, FAISS, and distributed workers can be added later after the basic GUI/database loop is proven.
 
@@ -15,10 +15,13 @@ The current version intentionally keeps the workflow simple. Temporal, Qdrant, F
 - Generates thumbnails
 - Creates safe resized analysis JPEGs for vision processing
 - Optionally calls a local OpenAI-compatible vision model, such as LM Studio
-- Stores captions, descriptions, tags, objects, visible text, notes, status, and error messages
+- Uses Pydantic AI to validate structured image-classification records before writing them to SQLite
+- Stores captions, descriptions, tags, objects, visible text, notes, status, confidence, retry focus, and error messages
+- Monitors classification quality and marks thin/missing records for retry
 - Provides a local FastAPI web GUI
 - Lets you edit image entries manually
 - Lets you mark images for reprocessing
+- Lets you process retry-needed entries from the dashboard
 - Lets you mark failed entries as removed from the index
 - Includes an OpenClaw agent prompt/workspace starter
 
@@ -51,9 +54,13 @@ Generate safe resized analysis images
    ↓
 Optional local vision-model classification
    ↓
-Write caption / tags / status / errors to database
+Pydantic AI structured validation
    ↓
-Review and edit in local browser GUI
+Quality monitor checks missing/thin fields
+   ↓
+Write DONE or NEEDS_REPROCESS record to database
+   ↓
+Review, edit, retry, or remove-from-index in local browser GUI
 ```
 
 ---
@@ -71,6 +78,16 @@ The database uses simple states for now:
 | `NEEDS_REPROCESS` | User or system marked the entry for another pass |
 | `SKIPPED` | File was intentionally skipped |
 | `REMOVED_FROM_INDEX` | Entry was removed from active index view; original file remains untouched |
+
+Retry monitoring also stores:
+
+| Field | Meaning |
+|---|---|
+| `needs_reprocess` | Boolean flag for entries that should be retried |
+| `retry_count` | Number of retry attempts recorded by the processor |
+| `retry_focus` | What the next pass should focus on, such as OCR, equipment ID, tags, or fuller description |
+| `quality_issue` | What was weak or missing from the last classification |
+| `confidence` | Model-reported confidence, when available |
 
 ---
 
@@ -158,8 +175,9 @@ The GUI has controls to:
 - process the next batch
 - browse image entries
 - search records
-- edit captions/tags/notes
+- edit captions/tags/notes/retry guidance
 - mark images for reprocess
+- process retry-needed entries
 - remove entries from the index
 - view failed entries and error messages
 
@@ -175,9 +193,11 @@ Recommended first test:
 4. Click **Scan configured folders**.
 5. Click **Process next batch** with a limit like `25`.
 6. Open **Images**.
-7. Edit one record.
-8. Mark one record for reprocess.
-9. Test remove-from-index on a failed or test record.
+7. Filter by **RETRY_NEEDED** to review weak or incomplete model records.
+8. Edit one record.
+9. Mark one record for reprocess.
+10. Test **Process retry-needed entries** from the dashboard.
+11. Test remove-from-index on a failed or test record.
 
 ---
 
@@ -208,11 +228,37 @@ vision:
   model: "your-local-vision-model"
   timeout_seconds: 180
   prompt_version: "image_librarian_v1"
+  structured_output: "pydantic_ai"
+  fallback_to_legacy_json: true
 ```
 
 This expects an OpenAI-compatible local endpoint. LM Studio can provide this style of local API when a compatible model is loaded.
 
 The app sends the resized analysis image, not the original full-resolution file, to the model.
+
+If `structured_output` is `pydantic_ai`, the app asks Pydantic AI to validate the model output against the `ImageClassificationRecord` schema. If that fails and `fallback_to_legacy_json` is true, the app tries the older direct JSON request path before marking the record as retry-needed.
+
+---
+
+## Retry monitor behavior
+
+The classifier now checks for missing or weak database entries before marking an image complete. A record is marked `NEEDS_REPROCESS` when important searchable data is missing or too thin, such as:
+
+- missing caption
+- missing detailed description
+- missing tags
+- missing visible objects/equipment list
+- missing visible text on likely text-heavy images
+- low model confidence
+- model/JSON/structured-output failure
+
+The app stores a `retry_focus` so the next pass knows what to improve, for example:
+
+```text
+OCR/read visible text; identify visible objects/equipment; generate searchable tags
+```
+
+This gives OpenClaw or a future Temporal worker enough information to retry intelligently instead of blindly running the same failing classification over and over.
 
 ---
 
@@ -368,6 +414,14 @@ Check:
 - the model name matches your local server
 - the model supports image input
 - `vision.enabled` is `true`
+- `pydantic-ai` installed successfully from `requirements.txt`
+
+For troubleshooting only, you can temporarily switch back to the old path:
+
+```yaml
+vision:
+  structured_output: "legacy_json"
+```
 
 ### GitHub checkout scripts are not executable
 
@@ -401,7 +455,7 @@ Planned later phases:
 This project is not trying to train a new model at first. The first goal is to build a reliable local catalogue:
 
 ```text
-image file → thumbnail → safe analysis copy → vision description → editable searchable database record
+image file → thumbnail → safe analysis copy → vision description → validated record → retry guidance → editable searchable database record
 ```
 
 Once this loop works reliably, the project can scale into a more advanced image librarian with vector search, Temporal workflows, and OpenClaw tool integration.
