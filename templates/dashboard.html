@@ -1,9 +1,10 @@
 {% extends "base.html" %}{% block body %}
 <h1>OpenClaw Image Librarian</h1>
-<div class="card"><h2>Status</h2><p><b>Total:</b> {{ total }}</p>{% for k,v in stats.items() %}<p><b>{{ k }}:</b> {{ v }}</p>{% endfor %}</div>
+<div class="card"><h2>Status</h2><p><b>Total:</b> {{ total }}</p><p><b>Retry needed:</b> <a href="/images?status=RETRY_NEEDED">{{ retry_total }}</a></p><p><b>Failed:</b> <a href="/images?status=FAILED">{{ failed_total }}</a></p>{% for k,v in stats.items() %}<p><b>{{ k }}:</b> {{ v }}</p>{% endfor %}</div>
 <div class="card"><h2>Controls</h2>
 <form method="post" action="/scan"><button>Scan configured folders</button></form>
 <form method="post" action="/process"><label>Process limit</label><input name="limit" value="25"><button>Process next batch</button></form>
+<form method="post" action="/retry-needed/process"><label>Retry limit</label><input name="limit" value="25"><button>Process retry-needed entries</button></form>
 <form method="post" action="/failed/remove-index-records"><button>Mark failed entries removed from index</button></form>
 </div>
 <div class="card"><h2>Configured roots</h2>{% for r in cfg.image_roots %}<p>{{ r }}</p>{% endfor %}<p>Edit <code>config.yaml</code> to add more folders.</p></div>
