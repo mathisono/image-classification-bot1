@@ -1,0 +1,29 @@
+# Image Librarian config
+# Add your image folders here after install or local dev setup.
+image_roots:
+  - "$HOME/Pictures"
+
+server:
+  host: "127.0.0.1"
+  port: 8765
+
+paths:
+  database: "data/image_index.sqlite"
+  thumbnails: "cache/thumbnails"
+  analysis: "cache/analysis"
+
+safety:
+  # Originals are read-only. The app creates safe JPEG working copies for large images.
+  max_original_file_mb: 300
+  max_decode_pixels: 100000000
+  vision_max_side_px: 1600
+  thumbnail_max_side_px: 384
+
+vision:
+  # OpenAI-compatible local vision endpoint, such as LM Studio if you load a vision-capable model.
+  enabled: false
+  base_url: "http://127.0.0.1:1234/v1"
+  api_key: "not-needed"
+  model: "local-vision-model"
+  timeout_seconds: 180
+  prompt_version: "image_librarian_v1"
