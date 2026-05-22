@@ -21,12 +21,12 @@ safety:
 
 vision:
   # OpenAI-compatible local vision endpoint, such as LM Studio if you load a vision-capable model.
-  enabled: false
+  enabled: true
   base_url: "http://127.0.0.1:1234/v1"
   api_key: "not-needed"
-  model: "local-vision-model"
+  model: "lmstudio/zai-org/glm-4.6v-flash"
   timeout_seconds: 180
-  prompt_version: "image_librarian_v1"
+  prompt_version: "image_librarian_identify_beater_v2"
   # pydantic_ai validates structured records before they are written to SQLite.
   # legacy_json keeps the old direct requests/json.loads path.
   structured_output: "pydantic_ai"

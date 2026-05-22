@@ -203,40 +203,33 @@ Recommended first test:
 
 ## Local vision model setup
 
-Vision is disabled by default.
-
-To enable it, edit:
-
-```bash
-nano ~/image_librarian/config.yaml
-```
-
-Change:
-
-```yaml
-vision:
-  enabled: false
-```
-
-to something like:
+The default config is set up for LM Studio with `lmstudio/zai-org/glm-4.6v-flash` loaded:
 
 ```yaml
 vision:
   enabled: true
   base_url: "http://127.0.0.1:1234/v1"
   api_key: "not-needed"
-  model: "your-local-vision-model"
+  model: "lmstudio/zai-org/glm-4.6v-flash"
   timeout_seconds: 180
-  prompt_version: "image_librarian_v1"
+  prompt_version: "image_librarian_identify_beater_v2"
   structured_output: "pydantic_ai"
   fallback_to_legacy_json: true
 ```
 
-This expects an OpenAI-compatible local endpoint. LM Studio can provide this style of local API when a compatible model is loaded.
+To change it later, edit:
+
+```bash
+nano ~/image_librarian/config.yaml
+```
+
+This expects an OpenAI-compatible local endpoint. LM Studio can provide this style of local API when `zai-org/glm-4.6v-flash` or another compatible vision model is loaded.
 
 The app sends the resized analysis image, not the original full-resolution file, to the model.
 
 If `structured_output` is `pydantic_ai`, the app asks Pydantic AI to validate the model output against the `ImageClassificationRecord` schema. If that fails and `fallback_to_legacy_json` is true, the app tries the older direct JSON request path before marking the record as retry-needed.
+
+The built-in prompt is tuned to "beat identify": it asks the vision model to add semantic, searchable information that basic file tools cannot provide, instead of repeating dimensions, file format, or other obvious metadata.
 
 ---
 
