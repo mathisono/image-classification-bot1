@@ -11,6 +11,7 @@ The current version intentionally keeps the workflow simple. Temporal, Qdrant, F
 ## What it does
 
 - Recursively scans configured image folders
+- Supports local folders and mounted Windows/SMB file shares
 - Stores image records in SQLite
 - Generates thumbnails
 - Creates safe resized analysis JPEGs for vision processing
@@ -38,13 +39,14 @@ This project is designed to be safe around large personal image collections.
 - Large images are resized into analysis copies before vision processing.
 - Vision is disabled by default until you configure a local model.
 - Private images should stay local unless you explicitly change the design.
+- SMB shares should be mounted read-only if you want maximum safety.
 
 ---
 
 ## Current workflow
 
 ```text
-Configured image folders
+Configured image folders or mounted SMB shares
    ↓
 Scan files into SQLite
    ↓
@@ -62,6 +64,104 @@ Write DONE or NEEDS_REPROCESS record to database
    ↓
 Review, edit, retry, or remove-from-index in local browser GUI
 ```
+
+---
+
+## Windows / SMB file shares
+
+The app scans normal Linux paths. For a Windows file share, mount the SMB share first, then add the mount point to `image_roots`.
+
+Install SMB mount support:
+
+```bash
+sudo apt update
+sudo apt install -y cifs-utils
+```
+
+Use the helper script:
+
+```bash
+cd ~/image_librarian
+chmod +x mount_smb_share.sh
+SMB_USERNAME="your-windows-user" ./mount_smb_share.sh //WINDOWS-PC/Photos /mnt/photos
+```
+
+Then add the mounted folder to:
+
+```bash
+nano ~/image_librarian/config.yaml
+```
+
+Example:
+
+```yaml
+image_roots:
+  - "/mnt/photos"
+```
+
+Test the mount before scanning:
+
+```bash
+ls -lah /mnt/photos
+find /mnt/photos -maxdepth 2 -type f | head
+```
+
+### Read-only SMB mount option
+
+For maximum safety, mount read-only manually:
+
+```bash
+sudo mkdir -p /mnt/photos
+sudo mount -t cifs //WINDOWS-PC/Photos /mnt/photos \
+  -o ro,iocharset=utf8,vers=3.0,uid=$(id -u),gid=$(id -g),file_mode=0444,dir_mode=0555,noserverino,username=your-windows-user
+```
+
+The app only needs read access to original images. It writes thumbnails, analysis images, and the SQLite database locally under `~/image_librarian`.
+
+### Persistent SMB mount with credentials file
+
+Create a private credentials file:
+
+```bash
+mkdir -p ~/.smbcredentials
+nano ~/.smbcredentials/photos.cred
+chmod 600 ~/.smbcredentials/photos.cred
+```
+
+File contents:
+
+```text
+username=your-windows-user
+password=your-windows-password
+domain=WORKGROUP
+```
+
+Add to `/etc/fstab`:
+
+```fstab
+//WINDOWS-PC/Photos /mnt/photos cifs ro,credentials=/home/YOURUSER/.smbcredentials/photos.cred,iocharset=utf8,vers=3.0,uid=YOUR_UID,gid=YOUR_GID,file_mode=0444,dir_mode=0555,noserverino,x-systemd.automount,nofail 0 0
+```
+
+Get your UID/GID with:
+
+```bash
+id
+```
+
+Then mount:
+
+```bash
+sudo systemctl daemon-reload
+sudo mount /mnt/photos
+```
+
+### Notes for large SMB archives
+
+- Start with a small subfolder first.
+- Wi-Fi SMB shares may be slow for 200,000 files.
+- Wired Ethernet is strongly preferred.
+- Thumbnails and analysis files are stored locally, not on the Windows share.
+- If the share disconnects during processing, records will be marked `FAILED` and can be retried later.
 
 ---
 
@@ -100,6 +200,10 @@ Linux system with:
 - `python3-venv`
 - Enough disk space for thumbnails and analysis images
 
+For Windows/SMB shares:
+
+- `cifs-utils`
+
 Optional:
 
 - OpenClaw
@@ -110,7 +214,7 @@ On Debian/Ubuntu/Mint-style systems:
 
 ```bash
 sudo apt update
-sudo apt install -y git python3 python3-venv
+sudo apt install -y git python3 python3-venv cifs-utils
 ```
 
 ---
@@ -153,6 +257,13 @@ image_roots:
   - "/path/to/test/images"
 ```
 
+For SMB/Windows shares, add the Linux mount point, not the `//SERVER/Share` path:
+
+```yaml
+image_roots:
+  - "/mnt/photos"
+```
+
 Do not start with your full 200,000-image archive on the first run. Test the workflow with 25–500 images first.
 
 ---
@@ -187,8 +298,8 @@ The GUI has controls to:
 
 Recommended first test:
 
-1. Put 25–100 sample images in a test folder.
-2. Add that folder to `config.yaml`.
+1. Put 25–100 sample images in a test folder or SMB subfolder.
+2. Add that folder or mount point to `config.yaml`.
 3. Start the GUI.
 4. Click **Scan configured folders**.
 5. Click **Process next batch** with a limit like `25`.
@@ -349,6 +460,7 @@ image-classification-bot1/
 │   └── images.html
 ├── config.yaml
 ├── install_image_librarian.sh
+├── mount_smb_share.sh
 ├── OPENCLAW_IMAGE_LIBRARIAN_PROMPT.md
 ├── README.md
 ├── requirements.txt
@@ -377,9 +489,46 @@ Install the venv package:
 sudo apt install -y python3-venv
 ```
 
+### `mount.cifs not found`
+
+Install SMB support:
+
+```bash
+sudo apt install -y cifs-utils
+```
+
+### SMB share mounts but files do not appear
+
+Check the share path and SMB version:
+
+```bash
+smbclient -L //WINDOWS-PC -U your-windows-user
+```
+
+Try a different SMB version:
+
+```bash
+sudo mount -t cifs //WINDOWS-PC/Photos /mnt/photos -o vers=2.1,username=your-windows-user
+```
+
+### Permission denied on SMB share
+
+Make sure the mount uses your Linux UID/GID:
+
+```bash
+uid=$(id -u)
+gid=$(id -g)
+```
+
+Mount with:
+
+```bash
+-o uid=$uid,gid=$gid,file_mode=0644,dir_mode=0755
+```
+
 ### GUI starts but no images appear
 
-Check `config.yaml` and make sure `image_roots` points to a real folder.
+Check `config.yaml` and make sure `image_roots` points to a real local path or mounted SMB path.
 
 Then click:
 
@@ -421,7 +570,7 @@ vision:
 Run:
 
 ```bash
-chmod +x install_image_librarian.sh run.sh
+chmod +x install_image_librarian.sh run.sh mount_smb_share.sh
 ```
 
 ---
@@ -440,6 +589,7 @@ Planned later phases:
 - OpenClaw tool wrapper for direct API actions
 - Better model/prompt versioning
 - Reprocess by model version or prompt version
+- SMB mount status checker in the GUI
 
 ---
 
@@ -451,4 +601,4 @@ This project is not trying to train a new model at first. The first goal is to b
 image file → thumbnail → safe analysis copy → vision description → validated record → retry guidance → editable searchable database record
 ```
 
-Once this loop works reliably, the project can scale into a more advanced image librarian with vector search, Temporal workflows, and OpenClaw tool integration.
+Once this loop works reliably, the project can scale into a more advanced image librarian with vector search, Temporal workflows, SMB-aware workers, and OpenClaw tool integration.
