@@ -1,7 +1,23 @@
 # Image Librarian config
-# Add your image folders here after install or local dev setup.
+# Image roots are user-supplied. Do not hardcode one machine's path.
+# Use the path as mounted/visible on THIS machine. For synchronized or SMB filesystems,
+# set shared: true so the scanner skips files that are still being written by another computer.
 image_roots:
-  - "$HOME/Pictures"
+  - name: "Pictures"
+    path: "$HOME/Pictures"
+    shared: false
+    follow_symlinks: false
+    enabled: true
+
+  # Example for a synchronized/shared filesystem such as MSE-87.
+  # The same root may appear at a different absolute path on different computers.
+  # The database stores both the current absolute path and the root-relative path.
+  # Uncomment and adjust for your system:
+  # - name: "MSE-87"
+  #   path: "/mnt/MSE-87"
+  #   shared: true
+  #   follow_symlinks: false
+  #   enabled: true
 
 server:
   host: "127.0.0.1"
@@ -11,6 +27,13 @@ paths:
   database: "data/image_index.sqlite"
   thumbnails: "cache/thumbnails"
   analysis: "cache/analysis"
+
+scanner:
+  skip_hidden_dirs: true
+  # For shared/synchronized filesystems, skip files modified in the last few seconds.
+  # This avoids indexing a file while another computer is still writing it.
+  shared_fs_stability_seconds: 5
+  mark_missing_as: "MISSING_SOURCE"
 
 safety:
   # Originals are read-only. The app creates safe JPEG working copies for large images.
