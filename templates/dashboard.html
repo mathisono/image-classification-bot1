@@ -1,12 +1,11 @@
 {% extends "base.html" %}{% block body %}
 <h1>OpenClaw Image Librarian</h1>
-<div class="card"><h2>Status</h2><p><b>Total:</b> {{ total }}</p><p><b>Retry needed:</b> <a href="/images?status=RETRY_NEEDED">{{ retry_total }}</a></p><p><b>Failed:</b> <a href="/images?status=FAILED">{{ failed_total }}</a></p>{% for k,v in stats.items() %}<p><b>{{ k }}:</b> {{ v }}</p>{% endfor %}</div>
-<div class="card"><h2>Controls</h2>
+<div class="card"><h2>Queue status</h2><p><b>Total images:</b> {{ total }}</p>{% for k,v in stats.items() %}<p><b>{{ k }}:</b> {{ v }}</p>{% endfor %}<h3>Jobs</h3>{% for k,v in jobs.items() %}<p><b>{{ k }}:</b> {{ v }}</p>{% endfor %}</div>
+<div class="card"><h2>Controls</h2><p>These actions enqueue work and return immediately. OpenClaw image-worker sub-agents process the queue independently.</p>
 <form method="post" action="/scan"><button>Scan configured folders</button></form>
-<form method="post" action="/scan-path"><h3>Scan a path now</h3><p>Use this for synchronized/shared filesystems such as <code>/mnt/MSE-87</code>, <code>/MSE-87</code>, or any user-mounted Windows/SMB path.</p><label>Root name</label><input name="root_name" placeholder="MSE-87"><label>Path</label><input name="path" placeholder="/mnt/MSE-87"><label><input type="checkbox" name="shared" checked style="width:auto"> Shared/synchronized filesystem; skip files that are still changing</label><br><button>Scan this path</button></form>
-<form method="post" action="/process"><label>Process limit</label><input name="limit" value="25"><button>Process next batch</button></form>
-<form method="post" action="/retry-needed/process"><label>Retry limit</label><input name="limit" value="25"><button>Process retry-needed entries</button></form>
-<form method="post" action="/failed/remove-index-records"><button>Mark failed entries removed from index</button></form>
-</div>
-<div class="card"><h2>Configured roots</h2>{% for r in cfg.image_roots %}<p><b>{{ r.name }}</b>: {{ r.path }} {% if r.shared %}<em>(shared)</em>{% endif %}</p>{% endfor %}<p>Edit <code>config.yaml</code> to add permanent folders, or use “Scan a path now” above for ad-hoc shared filesystem roots.</p></div>
+<form method="post" action="/scan-path"><h3>Scan a path now</h3><label>Root name</label><input name="root_name"><label>Path</label><input name="path"><label><input type="checkbox" name="shared" checked style="width:auto"> Shared filesystem</label><br><button>Scan this path</button></form>
+<form method="post" action="/process"><label>Queue image count</label><input name="limit" value="100"><button>Queue next images</button></form>
+<form method="post" action="/retry-needed/process"><label>Queue retry count</label><input name="limit" value="25"><button>Queue retry-needed images</button></form></div>
+<div class="card"><h2>OpenClaw workers</h2><p>Recommended workers: {{ cfg.workers.recommended_count }}. A worker is attributable only when it supplies an explicit <code>agent_name</code>.</p><table><tr><th>Agent</th><th>Worker ID</th><th>Last heartbeat</th><th>Jobs</th></tr>{% for w in workers %}<tr><td>{{ w.agent_name }}</td><td>{{ w.worker_id }}</td><td>{{ w.heartbeat }}</td><td>{{ w.jobs }}</td></tr>{% endfor %}</table></div>
+<div class="card"><h2>Recent job audit</h2><table><tr><th>Image</th><th>Status</th><th>Agent</th><th>Worker</th><th>Attempts</th><th>Error</th></tr>{% for j in recent %}<tr><td>{{ j.filename }}</td><td>{{ j.status }}</td><td>{{ j.agent_name or 'unassigned' }}</td><td>{{ j.worker_id or '' }}</td><td>{{ j.attempt_count }}</td><td>{{ j.last_error or '' }}</td></tr>{% endfor %}</table></div>
 {% endblock %}
