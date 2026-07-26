@@ -1,23 +1,9 @@
-# Image Librarian config
-# Image roots are user-supplied. Do not hardcode one machine's path.
-# Use the path as mounted/visible on THIS machine. For synchronized or SMB filesystems,
-# set shared: true so the scanner skips files that are still being written by another computer.
 image_roots:
   - name: "Pictures"
     path: "$HOME/Pictures"
     shared: false
     follow_symlinks: false
     enabled: true
-
-  # Example for a synchronized/shared filesystem such as MSE-87.
-  # The same root may appear at a different absolute path on different computers.
-  # The database stores both the current absolute path and the root-relative path.
-  # Uncomment and adjust for your system:
-  # - name: "MSE-87"
-  #   path: "/mnt/MSE-87"
-  #   shared: true
-  #   follow_symlinks: false
-  #   enabled: true
 
 server:
   host: "127.0.0.1"
@@ -30,27 +16,27 @@ paths:
 
 scanner:
   skip_hidden_dirs: true
-  # For shared/synchronized filesystems, skip files modified in the last few seconds.
-  # This avoids indexing a file while another computer is still writing it.
   shared_fs_stability_seconds: 5
   mark_missing_as: "MISSING_SOURCE"
 
 safety:
-  # Originals are read-only. The app creates safe JPEG working copies for large images.
   max_original_file_mb: 300
   max_decode_pixels: 100000000
   vision_max_side_px: 1600
   thumbnail_max_side_px: 384
 
+workers:
+  recommended_count: 4
+  poll_seconds: 2
+  lease_seconds: 120
+  hard_timeout_seconds: 75
+
 vision:
-  # OpenAI-compatible local vision endpoint, such as LM Studio if you load a vision-capable model.
   enabled: true
   base_url: "http://127.0.0.1:1234/v1"
   api_key: "not-needed"
   model: "lmstudio/zai-org/glm-4.6v-flash"
-  timeout_seconds: 180
+  timeout_seconds: 60
   prompt_version: "image_librarian_identify_beater_v2"
-  # pydantic_ai validates structured records before they are written to SQLite.
-  # legacy_json keeps the old direct requests/json.loads path.
   structured_output: "pydantic_ai"
-  fallback_to_legacy_json: true
+  fallback_to_legacy_json: false
