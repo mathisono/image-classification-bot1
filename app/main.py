@@ -1,13 +1,15 @@
 import os
 import time
 from pathlib import Path
-from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
+
+from fastapi import FastAPI, Form, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+
 from .config import load_config
 from .db import connect, execute
-from .imaging import SUPPORTED, make_derivatives
-from .vision import classify_with_local_model
+from .imaging import SUPPORTED
+from .queue import enqueue_images, recover_expired_jobs
 
 BASE = Path(__file__).resolve().parents[1]
 CFG_PATH = os.environ.get('IMAGE_LIBRARIAN_CONFIG', str(BASE / 'config.yaml'))
@@ -25,60 +27,45 @@ def _safe_scan_root(root: dict) -> int:
     root_path = Path(root['path']).expanduser()
     if not root.get('enabled', True) or not root_path.exists():
         return 0
-    root_name = _root_label(root)
-    follow_symlinks = bool(root.get('follow_symlinks', False))
-    skip_hidden = bool(CFG.get('scanner', {}).get('skip_hidden_dirs', True))
-    stability_seconds = int(CFG.get('scanner', {}).get('shared_fs_stability_seconds', 5)) if root.get('shared') else 0
     count = 0
-
-    for dirpath, dirnames, filenames in os.walk(root_path, followlinks=follow_symlinks):
-        if skip_hidden:
+    stability = int(CFG.get('scanner', {}).get('shared_fs_stability_seconds', 5)) if root.get('shared') else 0
+    for dirpath, dirnames, filenames in os.walk(root_path, followlinks=bool(root.get('follow_symlinks', False))):
+        if CFG.get('scanner', {}).get('skip_hidden_dirs', True):
             dirnames[:] = [d for d in dirnames if not d.startswith('.')]
-        current_dir = Path(dirpath)
         for filename in filenames:
-            p = current_dir / filename
+            p = Path(dirpath) / filename
             if p.suffix.lower() not in SUPPORTED:
                 continue
             try:
                 st = p.stat()
-                # Shared/sync filesystems can show files while another computer is still writing them.
-                # Skip files that changed very recently; the next scan will pick them up.
-                if stability_seconds and time.time() - st.st_mtime < stability_seconds:
+                if stability and time.time() - st.st_mtime < stability:
                     continue
                 rel = str(p.relative_to(root_path))
-                execute(DB, """
-                    INSERT INTO images(path, root_name, root_path, relative_path, filename, extension, file_size, source_mtime, source_seen_at, status)
+                execute(DB, """INSERT INTO images(path,root_name,root_path,relative_path,filename,extension,file_size,source_mtime,source_seen_at,status)
                     VALUES(?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,'NEW')
-                    ON CONFLICT(path) DO UPDATE SET
-                        root_name=excluded.root_name,
-                        root_path=excluded.root_path,
-                        relative_path=excluded.relative_path,
-                        filename=excluded.filename,
-                        extension=excluded.extension,
-                        file_size=excluded.file_size,
-                        source_mtime=excluded.source_mtime,
-                        source_seen_at=CURRENT_TIMESTAMP,
-                        updated_at=CURRENT_TIMESTAMP
-                """, (str(p), root_name, str(root_path), rel, p.name, p.suffix.lower(), st.st_size, st.st_mtime))
+                    ON CONFLICT(path) DO UPDATE SET root_name=excluded.root_name,root_path=excluded.root_path,
+                    relative_path=excluded.relative_path,filename=excluded.filename,extension=excluded.extension,
+                    file_size=excluded.file_size,source_mtime=excluded.source_mtime,source_seen_at=CURRENT_TIMESTAMP,
+                    updated_at=CURRENT_TIMESTAMP""",
+                    (str(p), _root_label(root), str(root_path), rel, p.name, p.suffix.lower(), st.st_size, st.st_mtime))
                 count += 1
-            except FileNotFoundError:
-                # Another computer may have moved/deleted it during scan; ignore and continue.
-                continue
-            except PermissionError as e:
-                execute(DB, """INSERT OR IGNORE INTO images(path, root_name, root_path, relative_path, filename, extension, status, error_message)
-                    VALUES(?,?,?,?,?,?,?,?)""", (str(p), root_name, str(root_path), '', p.name, p.suffix.lower(), 'FAILED', f'permission error while scanning shared filesystem: {e}'))
-            except Exception:
+            except (FileNotFoundError, PermissionError):
                 continue
     return count
 
 
 @app.get('/', response_class=HTMLResponse)
 def dashboard(request: Request):
-    stats = {r['status']: r['c'] for r in DB.execute('SELECT status, COUNT(*) c FROM images GROUP BY status')}
-    total = DB.execute('SELECT COUNT(*) c FROM images').fetchone()['c']
-    retry_total = DB.execute("SELECT COUNT(*) c FROM images WHERE needs_reprocess=1 OR status='NEEDS_REPROCESS'").fetchone()['c']
-    failed_total = DB.execute("SELECT COUNT(*) c FROM images WHERE status='FAILED'").fetchone()['c']
-    return templates.TemplateResponse('dashboard.html', {'request': request, 'stats': stats, 'total': total, 'retry_total': retry_total, 'failed_total': failed_total, 'cfg': CFG})
+    recover_expired_jobs(DB)
+    stats = {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM images GROUP BY status')}
+    jobs = {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')}
+    workers = DB.execute("SELECT agent_name,worker_id,MAX(heartbeat_at) heartbeat,COUNT(*) jobs FROM jobs WHERE agent_name IS NOT NULL GROUP BY agent_name,worker_id ORDER BY heartbeat DESC LIMIT 25").fetchall()
+    recent = DB.execute("SELECT j.*,i.filename FROM jobs j JOIN images i ON i.id=j.image_id ORDER BY j.id DESC LIMIT 25").fetchall()
+    return templates.TemplateResponse('dashboard.html', {
+        'request': request, 'stats': stats, 'jobs': jobs, 'workers': workers, 'recent': recent,
+        'total': sum(stats.values()), 'retry_total': stats.get('NEEDS_REPROCESS', 0),
+        'failed_total': stats.get('FAILED', 0), 'cfg': CFG,
+    })
 
 
 @app.post('/scan')
@@ -91,50 +78,20 @@ def scan():
 @app.post('/scan-path')
 def scan_path(path: str = Form(...), root_name: str = Form(''), shared: str = Form('on')):
     p = Path(path).expanduser()
-    root = {
-        'name': root_name or p.name or 'manual_root',
-        'path': str(p),
-        'shared': shared == 'on',
-        'follow_symlinks': False,
-        'enabled': True,
-    }
-    _safe_scan_root(root)
+    _safe_scan_root({'name': root_name or p.name or 'manual_root', 'path': str(p), 'shared': shared == 'on', 'follow_symlinks': False, 'enabled': True})
     return RedirectResponse('/images', status_code=303)
 
 
 @app.post('/process')
 def process(limit: int = Form(25)):
-    rows = DB.execute("SELECT * FROM images WHERE status IN ('NEW','NEEDS_REPROCESS','FAILED') ORDER BY id LIMIT ?", (limit,)).fetchall()
-    for row in rows:
-        try:
-            p = Path(row['path'])
-            if not p.exists():
-                execute(DB, "UPDATE images SET status='MISSING_SOURCE', source_missing_at=CURRENT_TIMESTAMP, error_message='source path no longer exists; shared filesystem may be offline or file moved', updated_at=CURRENT_TIMESTAMP WHERE id=?", (row['id'],))
-                continue
-            execute(DB, "UPDATE images SET status='PROCESSING', updated_at=CURRENT_TIMESTAMP WHERE id=?", (row['id'],))
-            width, height, thumb, analysis = make_derivatives(
-                row['path'], row['id'], CFG['paths']['thumbnails'], CFG['paths']['analysis'],
-                int(CFG['safety']['thumbnail_max_side_px']), int(CFG['safety']['vision_max_side_px']), int(CFG['safety']['max_decode_pixels'])
-            )
-            result = classify_with_local_model(analysis, CFG.get('vision', {}))
-            needs_reprocess = int(result.get('needs_reprocess', 0) or 0)
-            next_status = 'NEEDS_REPROCESS' if needs_reprocess else 'DONE'
-            retry_increment = 1 if row['status'] in ('NEEDS_REPROCESS', 'FAILED') or needs_reprocess else 0
-            execute(DB, """UPDATE images SET width=?, height=?, thumbnail_path=?, analysis_path=?, status=?, error_message=NULL,
-                short_caption=?, detailed_description=?, image_type=?, category=?, tags=?, objects=?, visible_text=?, model_used=?, prompt_version=?,
-                needs_reprocess=?, retry_count=COALESCE(retry_count,0)+?, retry_focus=?, quality_issue=?, confidence=?, last_retry_at=CASE WHEN ?=1 THEN CURRENT_TIMESTAMP ELSE last_retry_at END,
-                processed_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=?""",
-                (width, height, thumb, analysis, next_status,
-                 result.get('short_caption',''), result.get('detailed_description',''), result.get('image_type',''),
-                 result.get('category',''), result.get('tags',''), result.get('objects',''), result.get('visible_text',''),
-                 CFG.get('vision',{}).get('model','none'), CFG.get('vision',{}).get('prompt_version','v1'),
-                 needs_reprocess, retry_increment, result.get('retry_focus',''), result.get('quality_issue',''), float(result.get('confidence',0) or 0), retry_increment, row['id']))
-        except Exception as e:
-            execute(DB, """UPDATE images SET status='FAILED', error_message=?, needs_reprocess=1,
-                retry_count=COALESCE(retry_count,0)+1,
-                retry_focus='retry model call; check image decode, local vision endpoint, timeout, source share availability, and structured output format',
-                quality_issue='processing exception', last_retry_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=?""", (str(e)[:1000], row['id']))
-    return RedirectResponse('/images', status_code=303)
+    enqueue_images(DB, max(1, min(limit, 10000)), retry_only=False)
+    return RedirectResponse('/?queued=1', status_code=303)
+
+
+@app.post('/retry-needed/process')
+def process_retry_needed(limit: int = Form(25)):
+    enqueue_images(DB, max(1, min(limit, 10000)), retry_only=True)
+    return RedirectResponse('/?queued=1', status_code=303)
 
 
 @app.get('/images', response_class=HTMLResponse)
@@ -143,30 +100,20 @@ def images(request: Request, q: str = '', status: str = '', root: str = '', limi
     if q:
         sql = 'SELECT images.* FROM image_fts JOIN images ON image_fts.rowid=images.id WHERE image_fts MATCH ?'
         params.append(q)
-        if status == 'RETRY_NEEDED':
-            sql += " AND (images.needs_reprocess=1 OR images.status='NEEDS_REPROCESS')"
-        elif status:
-            sql += ' AND images.status=?'
-            params.append(status)
-        if root:
-            sql += ' AND images.root_name=?'
-            params.append(root)
-        sql += ' ORDER BY images.id DESC LIMIT ?'
-        params.append(limit)
     else:
         sql = 'SELECT * FROM images WHERE 1=1'
-        if status == 'RETRY_NEEDED':
-            sql += " AND (needs_reprocess=1 OR status='NEEDS_REPROCESS')"
-        elif status:
-            sql += ' AND status=?'
-            params.append(status)
-        if root:
-            sql += ' AND root_name=?'
-            params.append(root)
-        sql += ' ORDER BY id DESC LIMIT ?'
-        params.append(limit)
+    if status == 'RETRY_NEEDED':
+        sql += " AND (needs_reprocess=1 OR status='NEEDS_REPROCESS')"
+    elif status:
+        sql += ' AND status=?'
+        params.append(status)
+    if root:
+        sql += ' AND root_name=?'
+        params.append(root)
+    sql += ' ORDER BY id DESC LIMIT ?'
+    params.append(limit)
     rows = DB.execute(sql, tuple(params)).fetchall()
-    roots = [r['root_name'] for r in DB.execute("SELECT DISTINCT root_name FROM images WHERE root_name IS NOT NULL ORDER BY root_name")]
+    roots = [r['root_name'] for r in DB.execute('SELECT DISTINCT root_name FROM images WHERE root_name IS NOT NULL ORDER BY root_name')]
     return templates.TemplateResponse('images.html', {'request': request, 'rows': rows, 'q': q, 'status': status, 'root': root, 'roots': roots})
 
 
@@ -180,50 +127,38 @@ def thumb(image_id: int):
 
 @app.get('/images/{image_id}', response_class=HTMLResponse)
 def image_detail(request: Request, image_id: int):
-    row = DB.execute('SELECT * FROM images WHERE id=?', (image_id,)).fetchone()
-    return templates.TemplateResponse('detail.html', {'request': request, 'row': row})
+    return templates.TemplateResponse('detail.html', {'request': request, 'row': DB.execute('SELECT * FROM images WHERE id=?', (image_id,)).fetchone()})
 
 
 @app.post('/images/{image_id}/save')
 def save_image(image_id: int, short_caption: str = Form(''), detailed_description: str = Form(''), category: str = Form(''), tags: str = Form(''), objects: str = Form(''), visible_text: str = Form(''), notes: str = Form(''), retry_focus: str = Form(''), quality_issue: str = Form(''), status: str = Form('DONE')):
-    needs_reprocess = 1 if status == 'NEEDS_REPROCESS' else 0
-    execute(DB, """UPDATE images SET short_caption=?, detailed_description=?, category=?, tags=?, objects=?, visible_text=?, notes=?, retry_focus=?, quality_issue=?, status=?, needs_reprocess=?, updated_at=CURRENT_TIMESTAMP WHERE id=?""",
-            (short_caption, detailed_description, category, tags, objects, visible_text, notes, retry_focus, quality_issue, status, needs_reprocess, image_id))
+    execute(DB, "UPDATE images SET short_caption=?,detailed_description=?,category=?,tags=?,objects=?,visible_text=?,notes=?,retry_focus=?,quality_issue=?,status=?,needs_reprocess=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",
+            (short_caption, detailed_description, category, tags, objects, visible_text, notes, retry_focus, quality_issue, status, 1 if status == 'NEEDS_REPROCESS' else 0, image_id))
     return RedirectResponse(f'/images/{image_id}', status_code=303)
 
 
 @app.post('/images/{image_id}/reprocess')
 def reprocess(image_id: int):
-    execute(DB, "UPDATE images SET status='NEEDS_REPROCESS', needs_reprocess=1, retry_focus=COALESCE(NULLIF(retry_focus,''),'manual reprocess requested; improve searchable description/tags/objects'), updated_at=CURRENT_TIMESTAMP WHERE id=?", (image_id,))
+    execute(DB, "UPDATE images SET status='NEEDS_REPROCESS',needs_reprocess=1,updated_at=CURRENT_TIMESTAMP WHERE id=?", (image_id,))
     return RedirectResponse(f'/images/{image_id}', status_code=303)
 
 
 @app.post('/images/{image_id}/remove-index')
 def remove_index(image_id: int):
-    execute(DB, "UPDATE images SET status='REMOVED_FROM_INDEX', updated_at=CURRENT_TIMESTAMP WHERE id=?", (image_id,))
+    execute(DB, "UPDATE images SET status='REMOVED_FROM_INDEX',updated_at=CURRENT_TIMESTAMP WHERE id=?", (image_id,))
     return RedirectResponse('/images', status_code=303)
 
 
 @app.post('/failed/remove-index-records')
 def remove_failed_records():
-    execute(DB, "UPDATE images SET status='REMOVED_FROM_INDEX', updated_at=CURRENT_TIMESTAMP WHERE status='FAILED'")
+    execute(DB, "UPDATE images SET status='REMOVED_FROM_INDEX',updated_at=CURRENT_TIMESTAMP WHERE status='FAILED'")
     return RedirectResponse('/images?status=REMOVED_FROM_INDEX', status_code=303)
-
-
-@app.post('/retry-needed/process')
-def process_retry_needed(limit: int = Form(25)):
-    rows = DB.execute("SELECT id FROM images WHERE needs_reprocess=1 OR status='NEEDS_REPROCESS' ORDER BY COALESCE(last_retry_at, created_at), id LIMIT ?", (limit,)).fetchall()
-    for row in rows:
-        execute(DB, "UPDATE images SET status='NEEDS_REPROCESS', needs_reprocess=1, updated_at=CURRENT_TIMESTAMP WHERE id=?", (row['id'],))
-    return process(limit)
 
 
 @app.get('/api/stats')
 def api_stats():
+    recover_expired_jobs(DB)
     return {
-        'total': DB.execute('SELECT COUNT(*) c FROM images').fetchone()['c'],
-        'by_status': {r['status']: r['c'] for r in DB.execute('SELECT status, COUNT(*) c FROM images GROUP BY status')},
-        'by_root': {r['root_name']: r['c'] for r in DB.execute('SELECT COALESCE(root_name, "unknown") root_name, COUNT(*) c FROM images GROUP BY root_name')},
-        'retry_needed': DB.execute("SELECT COUNT(*) c FROM images WHERE needs_reprocess=1 OR status='NEEDS_REPROCESS'").fetchone()['c'],
-        'failed': DB.execute("SELECT COUNT(*) c FROM images WHERE status='FAILED'").fetchone()['c'],
+        'images': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM images GROUP BY status')},
+        'jobs': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')},
     }
