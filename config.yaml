@@ -5,6 +5,14 @@ image_roots:
     follow_symlinks: false
     enabled: true
 
+  # Windows/SMB archive example. Mount it on Linux first, then enable this root.
+  # Shared roots are required to be mounted before control.sh starts workers.
+  # - name: "Windows Image Archive"
+  #   path: "/mnt/image-archive"
+  #   shared: true
+  #   follow_symlinks: false
+  #   enabled: true
+
 server:
   host: "127.0.0.1"
   port: 8765
@@ -24,6 +32,11 @@ safety:
   max_decode_pixels: 100000000
   vision_max_side_px: 1600
   thumbnail_max_side_px: 384
+
+openclaw:
+  coordinator_agent: "realtime_mini_voice"
+  coordinator_model: "qwythos-9b-claude-mythos-5-1m@q4_k_m"
+  vision_agent: "betty"
 
 workers:
   recommended_count: 4
