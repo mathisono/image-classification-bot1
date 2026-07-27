@@ -7,7 +7,7 @@ The Image Librarian runs on Linux/OpenClaw while the original images remain on a
 - Windows share: original images plus `.image_librarian/image_index.sqlite`, mounted read/write.
 - Linux local disk: the active SQLite database, thumbnails, analysis copies, logs, and PID files.
 - Never run the live SQLite database directly over SMB. SQLite locking and WAL behavior are not reliable enough over a network share for this workload.
-- The application creates a consistent local SQLite snapshot and atomically replaces the copy on the Windows share at a configured interval.
+- The application creates a consistent local SQLite snapshot and atomically replaces the copy on the Windows share.
 - Original image files remain application-level read-only even though the share itself is writable.
 
 ## Create a credentials file
@@ -43,7 +43,7 @@ The helper creates and write-tests:
 /mnt/image-archive/.image_librarian/
 ```
 
-## Configure the archive and database synchronization
+## Configure the archive and adaptive database synchronization
 
 ```yaml
 image_roots:
@@ -59,13 +59,32 @@ paths:
 database_sync:
   enabled: true
   share_copy: "/mnt/image-archive/.image_librarian/image_index.sqlite"
-  interval_seconds: 300
+  interval_seconds: 1800
+  minimum_interval_seconds: 900
+  preferred_interval_seconds: 1800
+  maximum_interval_seconds: 21600
   restore_if_local_missing: true
+  versioned_backups: true
+  backup_directory: "/mnt/image-archive/.image_librarian/backups"
+  compression_level: 6
+  max_versions: 48
 ```
 
-The local database remains authoritative while the service is running. Every synchronization uses SQLite's backup API, verifies the snapshot, copies it to an `.incoming` file, and atomically replaces the share copy. A companion `.sync.json` file records the timestamp, size, and SHA-256 checksum.
+The local database remains authoritative while the service is running. Every synchronization uses SQLite's backup API, verifies the snapshot, copies it to an `.incoming` file, and atomically replaces the share copy. A companion `.sync.json` file records the timestamp, size, SHA-256 checksum, transfer duration, and next adaptive interval.
 
-When the local database is missing, startup can restore it from the share copy after an integrity check. The service never automatically overwrites an existing local database from the share, which avoids accidental rollback or two-machine conflicts.
+The scheduler starts at 30 minutes, never runs more often than every 15 minutes, and can extend to six hours. It lengthens the interval when the database exceeds 1 GB or 5 GB, when an SMB snapshot consumes more than 20% of the current cycle, or when repeated snapshots contain no database changes.
+
+## Compressed version history
+
+When the snapshot SHA-256 changes, the synchronizer also creates a versioned compressed backup:
+
+```text
+.image_librarian/backups/image_index-20260727T053000Z-0123456789ab.sqlite.gz
+```
+
+Unchanged snapshots do not create another version. This is a change-based incremental archive: only new database states add compressed files. It is not a block-level SQLite delta format. The default retention is the most recent 48 changed versions, controlled by `max_versions`.
+
+When the local database is missing, startup can restore it from the current uncompressed share copy after an integrity check. The service never automatically overwrites an existing local database from the share, which avoids accidental rollback or two-machine conflicts.
 
 ## Start from OpenClaw
 
