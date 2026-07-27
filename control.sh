@@ -37,15 +37,24 @@ from pathlib import Path
 from app.config import load_config
 cfg = load_config(sys.argv[1])
 failed = []
+
+def mounted_ancestor(path: Path):
+    for candidate in (path, *path.parents):
+        if candidate == Path(candidate.anchor):
+            continue
+        if os.path.ismount(candidate):
+            return candidate
+    return None
+
 for root in cfg.get("image_roots", []):
     if not root.get("enabled", True):
         continue
-    path = Path(root["path"]).expanduser()
+    path = Path(root["path"]).expanduser().resolve()
     if not path.exists() or not path.is_dir():
         failed.append(f"{root.get('name', 'unnamed')}: {path} (missing)")
         continue
-    if root.get("shared") and not os.path.ismount(path):
-        failed.append(f"{root.get('name', 'unnamed')}: {path} (not mounted)")
+    if root.get("shared") and not mounted_ancestor(path):
+        failed.append(f"{root.get('name', 'unnamed')}: {path} (SMB mount ancestor missing)")
 if cfg.get("database_sync", {}).get("enabled"):
     raw_target = str(cfg["database_sync"].get("share_copy", "")).strip()
     if not raw_target:
@@ -142,7 +151,7 @@ start_all() {
 
   echo "Web UI: http://$host:$port"
   echo "Coordinator: $COORDINATOR_AGENT | Vision agent: $VISION_AGENT | Workers: $count"
-  sync_enabled && echo "Database sync: enabled (live DB local; consistent snapshots copied to Windows share)"
+  sync_enabled && echo "Database sync: enabled (live DB local; consistent snapshots copied to selected archive)"
 }
 
 stop_all() {
