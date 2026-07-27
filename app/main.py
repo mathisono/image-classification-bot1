@@ -6,6 +6,13 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from .archive_setup import (
+    browse_directories,
+    discover_indexes,
+    merge_index,
+    mount_smb,
+    save_archive_selection,
+)
 from .config import load_config
 from .db import connect, execute
 from .imaging import SUPPORTED
@@ -17,6 +24,17 @@ CFG = load_config(CFG_PATH)
 DB = connect(CFG['paths']['database'])
 templates = Jinja2Templates(directory=str(BASE / 'templates'))
 app = FastAPI(title='OpenClaw Image Librarian')
+
+
+def _require_local(request: Request) -> None:
+    host = request.client.host if request.client else ''
+    if host not in {'127.0.0.1', '::1', 'localhost'}:
+        raise PermissionError('setup actions are available only from the local machine')
+
+
+def _reload_config() -> None:
+    CFG.clear()
+    CFG.update(load_config(CFG_PATH))
 
 
 def _root_label(root: dict) -> str:
@@ -66,6 +84,81 @@ def dashboard(request: Request):
         'total': sum(stats.values()), 'retry_total': stats.get('NEEDS_REPROCESS', 0),
         'failed_total': stats.get('FAILED', 0), 'cfg': CFG,
     })
+
+
+@app.get('/setup', response_class=HTMLResponse)
+def setup_page(request: Request, path: str = '', message: str = '', error: str = ''):
+    _require_local(request)
+    roots = [r['path'] for r in CFG.get('image_roots', []) if r.get('enabled', True)]
+    start = path or (roots[0] if roots else str(Path.home()))
+    try:
+        browser = browse_directories(start, roots or [str(Path.home())])
+    except Exception as exc:
+        browser = {'path': start, 'parent': None, 'entries': []}
+        error = error or str(exc)
+    selected = roots[0] if roots else ''
+    indexes = discover_indexes(selected, CFG['paths']['database']) if selected and Path(selected).is_dir() else []
+    return templates.TemplateResponse('setup.html', {
+        'request': request, 'cfg': CFG, 'browser': browser, 'selected': selected,
+        'indexes': indexes, 'message': message, 'error': error,
+    })
+
+
+@app.get('/api/browse')
+def browse_api(request: Request, path: str = ''):
+    _require_local(request)
+    roots = [r['path'] for r in CFG.get('image_roots', []) if r.get('enabled', True)] or [str(Path.home())]
+    try:
+        return browse_directories(path, roots)
+    except Exception as exc:
+        return JSONResponse({'error': str(exc)}, status_code=400)
+
+
+@app.post('/setup/mount-smb')
+def setup_mount_smb(
+    request: Request,
+    share: str = Form(...),
+    mount_point: str = Form('/mnt/image-archive'),
+    username: str = Form(...),
+    password: str = Form(...),
+    domain: str = Form('WORKGROUP'),
+):
+    _require_local(request)
+    try:
+        result = mount_smb(share, mount_point, username, password, domain, str(BASE / 'mount_smb_share.sh'))
+        save_archive_selection(CFG_PATH, result['mount_point'], Path(result['mount_point']).name)
+        _reload_config()
+        return RedirectResponse('/setup?message=SMB+share+mounted+and+selected', status_code=303)
+    except Exception as exc:
+        return RedirectResponse(f'/setup?error={str(exc)}', status_code=303)
+
+
+@app.post('/setup/select-folder')
+def setup_select_folder(request: Request, path: str = Form(...), root_name: str = Form('Selected Image Archive')):
+    _require_local(request)
+    try:
+        save_archive_selection(CFG_PATH, path, root_name)
+        _reload_config()
+        return RedirectResponse('/setup?message=Archive+folder+selected', status_code=303)
+    except Exception as exc:
+        return RedirectResponse(f'/setup?error={str(exc)}', status_code=303)
+
+
+@app.post('/setup/merge-indexes')
+def setup_merge_indexes(request: Request):
+    _require_local(request)
+    roots = [r['path'] for r in CFG.get('image_roots', []) if r.get('enabled', True)]
+    if not roots:
+        return RedirectResponse('/setup?error=No+archive+folder+selected', status_code=303)
+    reports = []
+    try:
+        for source in discover_indexes(roots[0], CFG['paths']['database']):
+            reports.append(merge_index(DB, source, roots[0]))
+        imported = sum(r['imported'] for r in reports)
+        updated = sum(r['updated'] for r in reports)
+        return RedirectResponse(f'/setup?message=Merged+{len(reports)}+indexes%3A+{imported}+imported%2C+{updated}+updated', status_code=303)
+    except Exception as exc:
+        return RedirectResponse(f'/setup?error={str(exc)}', status_code=303)
 
 
 @app.post('/scan')
