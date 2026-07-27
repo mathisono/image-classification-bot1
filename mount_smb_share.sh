@@ -6,7 +6,7 @@ MOUNT_POINT="${2:-${IMAGE_LIBRARIAN_SMB_MOUNT:-$HOME/image_librarian_smb}}"
 USERNAME="${SMB_USERNAME:-}"
 DOMAIN="${SMB_DOMAIN:-WORKGROUP}"
 CREDENTIALS_FILE="${SMB_CREDENTIALS_FILE:-}"
-READ_ONLY="${SMB_READ_ONLY:-true}"
+READ_ONLY="${SMB_READ_ONLY:-false}"
 SMB_VERSION="${SMB_VERSION:-3.0}"
 
 if [ -z "$SHARE" ]; then
@@ -16,15 +16,16 @@ Usage:
 
 Recommended environment:
   SMB_CREDENTIALS_FILE="$HOME/.smbcredentials/image-librarian.cred"
-  SMB_READ_ONLY=true
+  SMB_READ_ONLY=false
 
 Credentials file contents:
   username=windows-user
   password=windows-password
   domain=WORKGROUP
 
-Alternative interactive username mode:
-  SMB_USERNAME='windows-user' ./mount_smb_share.sh //SERVER/Share /mnt/image-archive
+The share must be writable so the application can store synchronized database
+snapshots under .image_librarian/. Original image files are still treated as
+read-only by application policy.
 EOF
   exit 1
 fi
@@ -43,8 +44,8 @@ if mountpoint -q "$MOUNT_POINT"; then
 fi
 
 MODE="rw"
-FILE_MODE="0644"
-DIR_MODE="0755"
+FILE_MODE="0664"
+DIR_MODE="0775"
 if [ "$READ_ONLY" = "true" ] || [ "$READ_ONLY" = "1" ]; then
   MODE="ro"
   FILE_MODE="0444"
@@ -79,18 +80,20 @@ if ! find "$MOUNT_POINT" -mindepth 1 -maxdepth 1 -print -quit >/dev/null 2>&1; t
   exit 1
 fi
 
+if [ "$MODE" = "rw" ]; then
+  mkdir -p "$MOUNT_POINT/.image_librarian"
+  test_file="$MOUNT_POINT/.image_librarian/.write-test-$$"
+  printf 'write test\n' > "$test_file"
+  rm -f "$test_file"
+fi
+
 cat <<EOF
 Mounted successfully: $SHARE -> $MOUNT_POINT
 Mode: $MODE
 
-Add this root to config.yaml:
-
-image_roots:
-  - name: "Windows Image Archive"
-    path: "$MOUNT_POINT"
-    shared: true
-    follow_symlinks: false
-    enabled: true
+Add this root to config.yaml and set:
+  database_sync.enabled: true
+  database_sync.share_copy: "$MOUNT_POINT/.image_librarian/image_index.sqlite"
 
 Then verify and start:
   ./control.sh check-share
