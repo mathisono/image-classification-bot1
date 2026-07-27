@@ -25,10 +25,22 @@ paths:
 database_sync:
   # Enable after configuring the writable Windows-share destination.
   enabled: false
-  # Store a consistent synchronized snapshot inside the selected archive folder.
   share_copy: "/mnt/image-archive/.image_librarian/image_index.sqlite"
-  interval_seconds: 300
+
+  # Adaptive synchronization starts at 30 minutes, never runs more often than
+  # every 15 minutes, and may lengthen to six hours for large/slow snapshots.
+  interval_seconds: 1800
+  minimum_interval_seconds: 900
+  preferred_interval_seconds: 1800
+  maximum_interval_seconds: 21600
   restore_if_local_missing: true
+
+  # Change-based version history: a compressed version is only created when the
+  # consistent database snapshot has a new SHA-256 digest.
+  versioned_backups: true
+  backup_directory: "/mnt/image-archive/.image_librarian/backups"
+  compression_level: 6
+  max_versions: 48
 
 scanner:
   skip_hidden_dirs: true
