@@ -5,25 +5,60 @@ image_roots:
     follow_symlinks: false
     enabled: true
 
+  # Windows/SMB archive example. Mount it read/write on Linux first, then enable this root.
+  # - name: "Windows Image Archive"
+  #   path: "/mnt/image-archive"
+  #   shared: true
+  #   follow_symlinks: false
+  #   enabled: true
+
 server:
   host: "127.0.0.1"
   port: 8765
 
 paths:
+  # Keep the live SQLite database local. Do not run SQLite directly over SMB.
   database: "data/image_index.sqlite"
   thumbnails: "cache/thumbnails"
   analysis: "cache/analysis"
+
+database_sync:
+  # Enable after configuring the writable Windows-share destination.
+  enabled: false
+  share_copy: "/mnt/image-archive/.image_librarian/image_index.sqlite"
+
+  # Adaptive synchronization starts at 30 minutes, never runs more often than
+  # every 15 minutes, and may lengthen to six hours for large/slow snapshots.
+  interval_seconds: 1800
+  minimum_interval_seconds: 900
+  preferred_interval_seconds: 1800
+  maximum_interval_seconds: 21600
+  restore_if_local_missing: true
+
+  # Change-based version history: a compressed version is only created when the
+  # consistent database snapshot has a new SHA-256 digest.
+  versioned_backups: true
+  backup_directory: "/mnt/image-archive/.image_librarian/backups"
+  compression_level: 6
+  max_versions: 48
 
 scanner:
   skip_hidden_dirs: true
   shared_fs_stability_seconds: 5
   mark_missing_as: "MISSING_SOURCE"
+  # Large archives should be scanned incrementally rather than loaded into memory.
+  expected_archive_size: 500000
 
 safety:
   max_original_file_mb: 300
   max_decode_pixels: 100000000
   vision_max_side_px: 1600
   thumbnail_max_side_px: 384
+
+openclaw:
+  coordinator_agent: "realtime_mini_voice"
+  coordinator_model: "qwythos-9b-claude-mythos-5-1m@q4_k_m"
+  vision_agent: "betty"
 
 workers:
   recommended_count: 4
