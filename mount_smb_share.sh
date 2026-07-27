@@ -1,32 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Helper for mounting a Windows/SMB share for Image Librarian.
-# This does not store credentials by default. For persistent mounts, see README.md.
-
-SHARE="${1:-}"
-MOUNT_POINT="${2:-$HOME/image_librarian_smb}"
+SHARE="${1:-${IMAGE_LIBRARIAN_SMB_SHARE:-}}"
+MOUNT_POINT="${2:-${IMAGE_LIBRARIAN_SMB_MOUNT:-$HOME/image_librarian_smb}}"
 USERNAME="${SMB_USERNAME:-}"
 DOMAIN="${SMB_DOMAIN:-WORKGROUP}"
+CREDENTIALS_FILE="${SMB_CREDENTIALS_FILE:-}"
+READ_ONLY="${SMB_READ_ONLY:-true}"
+SMB_VERSION="${SMB_VERSION:-3.0}"
 
 if [ -z "$SHARE" ]; then
   cat <<'EOF'
 Usage:
-  ./mount_smb_share.sh //SERVER/Share /mnt/imageshare
+  ./mount_smb_share.sh //SERVER/Share /mnt/image-archive
 
-Optional environment variables:
-  SMB_USERNAME='windows-user'
-  SMB_DOMAIN='WORKGROUP'
+Recommended environment:
+  SMB_CREDENTIALS_FILE="$HOME/.smbcredentials/image-librarian.cred"
+  SMB_READ_ONLY=true
 
-Examples:
-  SMB_USERNAME='mat' ./mount_smb_share.sh //192.168.3.50/Photos /mnt/photos
-  ./mount_smb_share.sh //NAS/ImageArchive ~/image_librarian_smb
+Credentials file contents:
+  username=windows-user
+  password=windows-password
+  domain=WORKGROUP
 
-After mounting, add the mount point to config.yaml:
-
-image_roots:
-  - "/mnt/photos"
-
+Alternative interactive username mode:
+  SMB_USERNAME='windows-user' ./mount_smb_share.sh //SERVER/Share /mnt/image-archive
 EOF
   exit 1
 fi
@@ -39,26 +37,62 @@ fi
 
 sudo mkdir -p "$MOUNT_POINT"
 
-OPTS="rw,iocharset=utf8,vers=3.0,uid=$(id -u),gid=$(id -g),file_mode=0644,dir_mode=0755,noserverino"
+if mountpoint -q "$MOUNT_POINT"; then
+  echo "Already mounted: $MOUNT_POINT"
+  exit 0
+fi
 
-if [ -n "$USERNAME" ]; then
-  echo "Mounting $SHARE at $MOUNT_POINT as $USERNAME"
-  sudo mount -t cifs "$SHARE" "$MOUNT_POINT" -o "$OPTS,username=$USERNAME,domain=$DOMAIN"
+MODE="rw"
+FILE_MODE="0644"
+DIR_MODE="0755"
+if [ "$READ_ONLY" = "true" ] || [ "$READ_ONLY" = "1" ]; then
+  MODE="ro"
+  FILE_MODE="0444"
+  DIR_MODE="0555"
+fi
+
+OPTS="$MODE,iocharset=utf8,vers=$SMB_VERSION,uid=$(id -u),gid=$(id -g),file_mode=$FILE_MODE,dir_mode=$DIR_MODE,noserverino"
+
+if [ -n "$CREDENTIALS_FILE" ]; then
+  if [ ! -f "$CREDENTIALS_FILE" ]; then
+    echo "ERROR: credentials file not found: $CREDENTIALS_FILE" >&2
+    exit 1
+  fi
+  chmod 600 "$CREDENTIALS_FILE"
+  OPTS="$OPTS,credentials=$CREDENTIALS_FILE"
+elif [ -n "$USERNAME" ]; then
+  OPTS="$OPTS,username=$USERNAME,domain=$DOMAIN"
 else
-  echo "Mounting $SHARE at $MOUNT_POINT as guest/anonymous"
-  sudo mount -t cifs "$SHARE" "$MOUNT_POINT" -o "$OPTS,guest"
+  OPTS="$OPTS,guest"
+fi
+
+echo "Mounting $SHARE at $MOUNT_POINT ($MODE)"
+sudo mount -t cifs "$SHARE" "$MOUNT_POINT" -o "$OPTS"
+
+if ! mountpoint -q "$MOUNT_POINT"; then
+  echo "ERROR: mount did not become active: $MOUNT_POINT" >&2
+  exit 1
+fi
+
+if ! find "$MOUNT_POINT" -mindepth 1 -maxdepth 1 -print -quit >/dev/null 2>&1; then
+  echo "ERROR: mounted share cannot be listed: $MOUNT_POINT" >&2
+  exit 1
 fi
 
 cat <<EOF
+Mounted successfully: $SHARE -> $MOUNT_POINT
+Mode: $MODE
 
-Mounted: $SHARE -> $MOUNT_POINT
-
-Add this to image_roots in config.yaml:
+Add this root to config.yaml:
 
 image_roots:
-  - "$MOUNT_POINT"
+  - name: "Windows Image Archive"
+    path: "$MOUNT_POINT"
+    shared: true
+    follow_symlinks: false
+    enabled: true
 
-Test listing:
-  ls -lah "$MOUNT_POINT"
-
+Then verify and start:
+  ./control.sh check-share
+  ./control.sh start
 EOF
