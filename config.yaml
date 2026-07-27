@@ -5,8 +5,7 @@ image_roots:
     follow_symlinks: false
     enabled: true
 
-  # Windows/SMB archive example. Mount it on Linux first, then enable this root.
-  # Shared roots are required to be mounted before control.sh starts workers.
+  # Windows/SMB archive example. Mount it read/write on Linux first, then enable this root.
   # - name: "Windows Image Archive"
   #   path: "/mnt/image-archive"
   #   shared: true
@@ -18,14 +17,25 @@ server:
   port: 8765
 
 paths:
+  # Keep the live SQLite database local. Do not run SQLite directly over SMB.
   database: "data/image_index.sqlite"
   thumbnails: "cache/thumbnails"
   analysis: "cache/analysis"
+
+database_sync:
+  # Enable after configuring the writable Windows-share destination.
+  enabled: false
+  # Store a consistent synchronized snapshot inside the selected archive folder.
+  share_copy: "/mnt/image-archive/.image_librarian/image_index.sqlite"
+  interval_seconds: 300
+  restore_if_local_missing: true
 
 scanner:
   skip_hidden_dirs: true
   shared_fs_stability_seconds: 5
   mark_missing_as: "MISSING_SOURCE"
+  # Large archives should be scanned incrementally rather than loaded into memory.
+  expected_archive_size: 500000
 
 safety:
   max_original_file_mb: 300
