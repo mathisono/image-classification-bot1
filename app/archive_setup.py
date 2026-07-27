@@ -18,6 +18,15 @@ MERGE_COLUMNS = [
 ]
 
 
+def _mounted_ancestor(path: Path) -> Path | None:
+    for candidate in (path, *path.parents):
+        if candidate == Path(candidate.anchor):
+            continue
+        if os.path.ismount(candidate):
+            return candidate
+    return None
+
+
 def save_archive_selection(config_path: str, archive_root: str, root_name: str = 'Selected Image Archive') -> dict:
     cfg_path = Path(config_path)
     raw = yaml.safe_load(cfg_path.read_text(encoding='utf-8')) or {}
@@ -31,7 +40,7 @@ def save_archive_selection(config_path: str, archive_root: str, root_name: str =
     probe.unlink()
     raw['image_roots'] = [{
         'name': root_name or root.name or 'Selected Image Archive',
-        'path': str(root), 'shared': os.path.ismount(root),
+        'path': str(root), 'shared': _mounted_ancestor(root) is not None,
         'follow_symlinks': False, 'enabled': True,
     }]
     sync = raw.setdefault('database_sync', {})
@@ -156,10 +165,7 @@ def merge_index(active: sqlite3.Connection, source_database: str, archive_root: 
                         continue
                     update_fields = [c for c in fields if c != 'path' and data.get(c) not in (None, '')]
                     if update_fields:
-                        active.execute(
-                            f"UPDATE images SET {','.join(f'{c}=?' for c in update_fields)},updated_at=CURRENT_TIMESTAMP WHERE path=?",
-                            [data.get(c) for c in update_fields] + [current_path],
-                        )
+                        active.execute(f"UPDATE images SET {','.join(f'{c}=?' for c in update_fields)},updated_at=CURRENT_TIMESTAMP WHERE path=?", [data.get(c) for c in update_fields] + [current_path])
                         updated += 1
         active.commit()
         return {'database': str(source_path), 'rows': total, 'imported': imported, 'updated': updated, 'skipped': skipped}
