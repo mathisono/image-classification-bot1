@@ -1,4 +1,7 @@
+import json
 import os
+import subprocess
+import sys
 import time
 from pathlib import Path
 from urllib.parse import quote_plus
@@ -7,7 +10,7 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from .archive_setup import browse_directories, discover_indexes, merge_index, mount_smb, save_archive_selection
+from .archive_setup import browse_directories, mount_smb, save_archive_selection
 from .config import load_config
 from .db import connect, execute
 from .imaging import SUPPORTED
@@ -19,6 +22,9 @@ CFG = load_config(CFG_PATH)
 DB = connect(CFG['paths']['database'])
 templates = Jinja2Templates(directory=str(BASE / 'templates'))
 app = FastAPI(title='OpenClaw Image Librarian')
+MERGE_STATUS = BASE / 'data/index_merge_status.json'
+MERGE_PID = BASE / 'data/run/index_merge.pid'
+MERGE_LOG = BASE / 'data/logs/index_merge.log'
 
 
 def _require_local(request: Request) -> None:
@@ -36,6 +42,24 @@ def _browser_roots() -> list[str]:
     candidates = [str(Path.home()), '/mnt', f'/media/{Path.home().name}']
     candidates.extend(r['path'] for r in CFG.get('image_roots', []) if r.get('enabled', True))
     return list(dict.fromkeys(str(Path(p).expanduser()) for p in candidates if Path(p).expanduser().is_dir()))
+
+
+def _read_merge_status() -> dict:
+    if not MERGE_STATUS.exists():
+        return {}
+    try:
+        return json.loads(MERGE_STATUS.read_text(encoding='utf-8'))
+    except Exception:
+        return {'status': 'UNKNOWN', 'error': 'merge status file is unreadable'}
+
+
+def _pid_alive(path: Path) -> bool:
+    try:
+        pid = int(path.read_text().strip())
+        os.kill(pid, 0)
+        return True
+    except Exception:
+        return False
 
 
 def _root_label(root: dict) -> str:
@@ -80,11 +104,7 @@ def dashboard(request: Request):
     jobs = {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')}
     workers = DB.execute("SELECT agent_name,worker_id,MAX(heartbeat_at) heartbeat,COUNT(*) jobs FROM jobs WHERE agent_name IS NOT NULL GROUP BY agent_name,worker_id ORDER BY heartbeat DESC LIMIT 25").fetchall()
     recent = DB.execute("SELECT j.*,i.filename FROM jobs j JOIN images i ON i.id=j.image_id ORDER BY j.id DESC LIMIT 25").fetchall()
-    return templates.TemplateResponse('dashboard.html', {
-        'request': request, 'stats': stats, 'jobs': jobs, 'workers': workers, 'recent': recent,
-        'total': sum(stats.values()), 'retry_total': stats.get('NEEDS_REPROCESS', 0),
-        'failed_total': stats.get('FAILED', 0), 'cfg': CFG,
-    })
+    return templates.TemplateResponse('dashboard.html', {'request': request, 'stats': stats, 'jobs': jobs, 'workers': workers, 'recent': recent, 'total': sum(stats.values()), 'retry_total': stats.get('NEEDS_REPROCESS', 0), 'failed_total': stats.get('FAILED', 0), 'cfg': CFG})
 
 
 @app.get('/setup', response_class=HTMLResponse)
@@ -98,12 +118,7 @@ def setup_page(request: Request, path: str = '', message: str = '', error: str =
     except Exception as exc:
         browser = {'path': start, 'parent': None, 'entries': []}
         error = error or str(exc)
-    selected = selected_roots[0] if selected_roots else ''
-    indexes = discover_indexes(selected, CFG['paths']['database']) if selected and Path(selected).is_dir() else []
-    return templates.TemplateResponse('setup.html', {
-        'request': request, 'cfg': CFG, 'browser': browser, 'selected': selected,
-        'indexes': indexes, 'message': message, 'error': error,
-    })
+    return templates.TemplateResponse('setup.html', {'request': request, 'cfg': CFG, 'browser': browser, 'selected': selected_roots[0] if selected_roots else '', 'merge_status': _read_merge_status(), 'merge_running': _pid_alive(MERGE_PID), 'message': message, 'error': error})
 
 
 @app.get('/api/browse')
@@ -113,6 +128,12 @@ def browse_api(request: Request, path: str = ''):
         return browse_directories(path, _browser_roots())
     except Exception as exc:
         return JSONResponse({'error': str(exc)}, status_code=400)
+
+
+@app.get('/api/index-merge-status')
+def index_merge_status(request: Request):
+    _require_local(request)
+    return {'running': _pid_alive(MERGE_PID), **_read_merge_status()}
 
 
 @app.post('/setup/mount-smb')
@@ -144,16 +165,14 @@ def setup_merge_indexes(request: Request):
     roots = [r['path'] for r in CFG.get('image_roots', []) if r.get('enabled', True)]
     if not roots:
         return RedirectResponse('/setup?error=No+archive+folder+selected', status_code=303)
-    reports = []
-    try:
-        for source in discover_indexes(roots[0], CFG['paths']['database']):
-            reports.append(merge_index(DB, source, roots[0]))
-        imported = sum(r['imported'] for r in reports)
-        updated = sum(r['updated'] for r in reports)
-        message = f'Merged {len(reports)} indexes: {imported} imported, {updated} updated'
-        return RedirectResponse(f'/setup?message={quote_plus(message)}', status_code=303)
-    except Exception as exc:
-        return RedirectResponse(f'/setup?error={quote_plus(str(exc))}', status_code=303)
+    if _pid_alive(MERGE_PID):
+        return RedirectResponse('/setup?message=Index+merge+is+already+running', status_code=303)
+    MERGE_PID.parent.mkdir(parents=True, exist_ok=True)
+    MERGE_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with MERGE_LOG.open('a', encoding='utf-8') as log:
+        process = subprocess.Popen([sys.executable, '-m', 'app.index_merge', '--config', CFG_PATH, '--status', str(MERGE_STATUS)], cwd=BASE, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+    MERGE_PID.write_text(str(process.pid), encoding='utf-8')
+    return RedirectResponse('/setup?message=Nested+index+discovery+and+merge+started', status_code=303)
 
 
 @app.post('/scan')
@@ -193,13 +212,10 @@ def images(request: Request, q: str = '', status: str = '', root: str = '', limi
     if status == 'RETRY_NEEDED':
         sql += " AND (needs_reprocess=1 OR status='NEEDS_REPROCESS')"
     elif status:
-        sql += ' AND status=?'
-        params.append(status)
+        sql += ' AND status=?'; params.append(status)
     if root:
-        sql += ' AND root_name=?'
-        params.append(root)
-    sql += ' ORDER BY id DESC LIMIT ?'
-    params.append(limit)
+        sql += ' AND root_name=?'; params.append(root)
+    sql += ' ORDER BY id DESC LIMIT ?'; params.append(limit)
     rows = DB.execute(sql, tuple(params)).fetchall()
     roots = [r['root_name'] for r in DB.execute('SELECT DISTINCT root_name FROM images WHERE root_name IS NOT NULL ORDER BY root_name')]
     return templates.TemplateResponse('images.html', {'request': request, 'rows': rows, 'q': q, 'status': status, 'root': root, 'roots': roots})
@@ -245,7 +261,4 @@ def remove_failed_records():
 @app.get('/api/stats')
 def api_stats():
     recover_expired_jobs(DB)
-    return {
-        'images': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM images GROUP BY status')},
-        'jobs': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')},
-    }
+    return {'images': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM images GROUP BY status')}, 'jobs': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')}}
