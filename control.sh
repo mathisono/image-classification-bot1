@@ -47,13 +47,15 @@ for root in cfg.get("image_roots", []):
     if root.get("shared") and not os.path.ismount(path):
         failed.append(f"{root.get('name', 'unnamed')}: {path} (not mounted)")
 if cfg.get("database_sync", {}).get("enabled"):
-    target = Path(os.path.expandvars(cfg["database_sync"].get("share_copy", ""))).expanduser()
-    if not str(target):
+    raw_target = str(cfg["database_sync"].get("share_copy", "")).strip()
+    if not raw_target:
         failed.append("database_sync.share_copy is empty")
-    elif not target.parent.exists():
-        failed.append(f"database sync directory missing: {target.parent}")
-    elif not os.access(target.parent, os.W_OK):
-        failed.append(f"database sync directory not writable: {target.parent}")
+    else:
+        target = Path(os.path.expandvars(raw_target)).expanduser()
+        if not target.parent.exists():
+            failed.append(f"database sync directory missing: {target.parent}")
+        elif not os.access(target.parent, os.W_OK):
+            failed.append(f"database sync directory not writable: {target.parent}")
 if failed:
     print("Windows/shared image root check failed:", file=sys.stderr)
     for item in failed:
