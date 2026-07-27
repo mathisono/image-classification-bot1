@@ -35,14 +35,13 @@ fi
 SUDO=(sudo)
 if [ "$NONINTERACTIVE" = "true" ] || [ "$NONINTERACTIVE" = "1" ]; then
   SUDO=(sudo -n)
-  if ! "${SUDO[@]}" true 2>/dev/null; then
-    echo "ERROR: local web setup cannot use sudo noninteractively." >&2
-    echo "Run the mount helper once in a terminal, or grant narrowly scoped passwordless sudo for mkdir and mount.cifs." >&2
-    exit 1
-  fi
 fi
 
-"${SUDO[@]}" mkdir -p "$MOUNT_POINT"
+if ! "${SUDO[@]}" mkdir -p "$MOUNT_POINT"; then
+  echo "ERROR: unable to create mount point noninteractively: $MOUNT_POINT" >&2
+  echo "Run the mount helper once in a terminal, or grant narrowly scoped sudo permission for mkdir and mount.cifs." >&2
+  exit 1
+fi
 
 if mountpoint -q "$MOUNT_POINT"; then
   echo "Already mounted: $MOUNT_POINT"
@@ -72,7 +71,10 @@ else
   fi
 
   echo "Mounting $SHARE at $MOUNT_POINT ($MODE)"
-  "${SUDO[@]}" mount -t cifs "$SHARE" "$MOUNT_POINT" -o "$OPTS"
+  if ! "${SUDO[@]}" mount -t cifs "$SHARE" "$MOUNT_POINT" -o "$OPTS"; then
+    echo "ERROR: SMB mount failed. Run this helper in a terminal or configure narrowly scoped passwordless sudo for mount.cifs." >&2
+    exit 1
+  fi
 fi
 
 if ! mountpoint -q "$MOUNT_POINT"; then
