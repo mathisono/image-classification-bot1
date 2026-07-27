@@ -8,6 +8,7 @@ DOMAIN="${SMB_DOMAIN:-WORKGROUP}"
 CREDENTIALS_FILE="${SMB_CREDENTIALS_FILE:-}"
 READ_ONLY="${SMB_READ_ONLY:-false}"
 SMB_VERSION="${SMB_VERSION:-3.0}"
+NONINTERACTIVE="${SMB_SUDO_NONINTERACTIVE:-false}"
 
 if [ -z "$SHARE" ]; then
   cat <<'EOF'
@@ -18,14 +19,9 @@ Recommended environment:
   SMB_CREDENTIALS_FILE="$HOME/.smbcredentials/image-librarian.cred"
   SMB_READ_ONLY=false
 
-Credentials file contents:
-  username=windows-user
-  password=windows-password
-  domain=WORKGROUP
-
 The share must be writable so the application can store synchronized database
-snapshots under .image_librarian/. Original image files are still treated as
-read-only by application policy.
+snapshots under .image_librarian/. Original image files remain read-only by
+application policy.
 EOF
   exit 1
 fi
@@ -36,39 +32,50 @@ if ! command -v mount.cifs >/dev/null 2>&1; then
   exit 1
 fi
 
-sudo mkdir -p "$MOUNT_POINT"
+SUDO=(sudo)
+if [ "$NONINTERACTIVE" = "true" ] || [ "$NONINTERACTIVE" = "1" ]; then
+  SUDO=(sudo -n)
+fi
+
+if ! "${SUDO[@]}" mkdir -p "$MOUNT_POINT"; then
+  echo "ERROR: unable to create mount point noninteractively: $MOUNT_POINT" >&2
+  echo "Run the mount helper once in a terminal, or grant narrowly scoped sudo permission for mkdir and mount.cifs." >&2
+  exit 1
+fi
 
 if mountpoint -q "$MOUNT_POINT"; then
   echo "Already mounted: $MOUNT_POINT"
-  exit 0
-fi
+else
+  MODE="rw"
+  FILE_MODE="0664"
+  DIR_MODE="0775"
+  if [ "$READ_ONLY" = "true" ] || [ "$READ_ONLY" = "1" ]; then
+    MODE="ro"
+    FILE_MODE="0444"
+    DIR_MODE="0555"
+  fi
 
-MODE="rw"
-FILE_MODE="0664"
-DIR_MODE="0775"
-if [ "$READ_ONLY" = "true" ] || [ "$READ_ONLY" = "1" ]; then
-  MODE="ro"
-  FILE_MODE="0444"
-  DIR_MODE="0555"
-fi
+  OPTS="$MODE,iocharset=utf8,vers=$SMB_VERSION,uid=$(id -u),gid=$(id -g),file_mode=$FILE_MODE,dir_mode=$DIR_MODE,noserverino"
 
-OPTS="$MODE,iocharset=utf8,vers=$SMB_VERSION,uid=$(id -u),gid=$(id -g),file_mode=$FILE_MODE,dir_mode=$DIR_MODE,noserverino"
+  if [ -n "$CREDENTIALS_FILE" ]; then
+    if [ ! -f "$CREDENTIALS_FILE" ]; then
+      echo "ERROR: credentials file not found: $CREDENTIALS_FILE" >&2
+      exit 1
+    fi
+    chmod 600 "$CREDENTIALS_FILE"
+    OPTS="$OPTS,credentials=$CREDENTIALS_FILE"
+  elif [ -n "$USERNAME" ]; then
+    OPTS="$OPTS,username=$USERNAME,domain=$DOMAIN"
+  else
+    OPTS="$OPTS,guest"
+  fi
 
-if [ -n "$CREDENTIALS_FILE" ]; then
-  if [ ! -f "$CREDENTIALS_FILE" ]; then
-    echo "ERROR: credentials file not found: $CREDENTIALS_FILE" >&2
+  echo "Mounting $SHARE at $MOUNT_POINT ($MODE)"
+  if ! "${SUDO[@]}" mount -t cifs "$SHARE" "$MOUNT_POINT" -o "$OPTS"; then
+    echo "ERROR: SMB mount failed. Run this helper in a terminal or configure narrowly scoped passwordless sudo for mount.cifs." >&2
     exit 1
   fi
-  chmod 600 "$CREDENTIALS_FILE"
-  OPTS="$OPTS,credentials=$CREDENTIALS_FILE"
-elif [ -n "$USERNAME" ]; then
-  OPTS="$OPTS,username=$USERNAME,domain=$DOMAIN"
-else
-  OPTS="$OPTS,guest"
 fi
-
-echo "Mounting $SHARE at $MOUNT_POINT ($MODE)"
-sudo mount -t cifs "$SHARE" "$MOUNT_POINT" -o "$OPTS"
 
 if ! mountpoint -q "$MOUNT_POINT"; then
   echo "ERROR: mount did not become active: $MOUNT_POINT" >&2
@@ -80,7 +87,7 @@ if ! find "$MOUNT_POINT" -mindepth 1 -maxdepth 1 -print -quit >/dev/null 2>&1; t
   exit 1
 fi
 
-if [ "$MODE" = "rw" ]; then
+if [ "${MODE:-rw}" = "rw" ]; then
   mkdir -p "$MOUNT_POINT/.image_librarian"
   test_file="$MOUNT_POINT/.image_librarian/.write-test-$$"
   printf 'write test\n' > "$test_file"
@@ -89,13 +96,8 @@ fi
 
 cat <<EOF
 Mounted successfully: $SHARE -> $MOUNT_POINT
-Mode: $MODE
+Mode: ${MODE:-existing mount}
 
-Add this root to config.yaml and set:
-  database_sync.enabled: true
-  database_sync.share_copy: "$MOUNT_POINT/.image_librarian/image_index.sqlite"
-
-Then verify and start:
-  ./control.sh check-share
-  ./control.sh start
+Open the setup page:
+  http://127.0.0.1:8765/setup
 EOF

@@ -1,0 +1,59 @@
+{% extends "base.html" %}{% block body %}
+<h1>Archive setup</h1>
+<p><a href="/">← Dashboard</a></p>
+{% if message %}<div class="card"><b>Success:</b> {{ message }}</div>{% endif %}
+{% if error %}<div class="card"><b>Error:</b> {{ error }}</div>{% endif %}
+
+<div class="card">
+  <h2>1. Mount a Windows SMB share</h2>
+  <p>This page is available only from the local machine. Credentials are written to <code>~/.smbcredentials/image-librarian.cred</code> with mode 0600 and are never displayed again.</p>
+  <form method="post" action="/setup/mount-smb">
+    <label>Share</label><input name="share" placeholder="//WINDOWS-PC/Photos" required>
+    <label>Linux mount point</label><input name="mount_point" value="/mnt/image-archive" required>
+    <label>Windows username</label><input name="username" autocomplete="username" required>
+    <label>Windows password</label><input type="password" name="password" autocomplete="current-password" required>
+    <label>Domain</label><input name="domain" value="WORKGROUP">
+    <button>Mount read/write and select archive</button>
+  </form>
+  <p>The web service must be allowed to run <code>sudo -n mkdir</code> and <code>sudo -n mount -t cifs</code>. If that permission is unavailable, the page reports the terminal setup requirement instead of hanging.</p>
+</div>
+
+<div class="card">
+  <h2>2. Select the folder to classify</h2>
+  <p>Current folder: <code>{{ browser.path }}</code></p>
+  {% if browser.parent %}<p><a href="/setup?path={{ browser.parent|urlencode }}">⬆ Parent folder</a></p>{% endif %}
+  <table>
+    <tr><th>Folder</th><th>Existing index</th><th>Action</th></tr>
+    {% for entry in browser.entries %}
+    <tr>
+      <td><a href="/setup?path={{ entry.path|urlencode }}">{{ entry.name }}</a></td>
+      <td>{% if entry.has_index %}Yes{% else %}No{% endif %}</td>
+      <td><form method="post" action="/setup/select-folder"><input type="hidden" name="path" value="{{ entry.path }}"><input type="hidden" name="root_name" value="{{ entry.name }}"><button>Select</button></form></td>
+    </tr>
+    {% endfor %}
+  </table>
+  <form method="post" action="/setup/select-folder">
+    <input type="hidden" name="path" value="{{ browser.path }}">
+    <label>Archive name</label><input name="root_name" value="{{ browser.path.split('/')[-1] or 'Selected Image Archive' }}">
+    <button>Select current folder</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>3. Index placement and nested-index merge</h2>
+  {% if selected %}
+  <p>Selected archive: <code>{{ selected }}</code></p>
+  <p>Current synchronized index: <code>{{ cfg.database_sync.share_copy }}</code></p>
+  <p>Versioned backups: <code>{{ cfg.database_sync.backup_directory }}</code></p>
+  <form method="post" action="/setup/merge-indexes"><button {% if merge_running %}disabled{% endif %}>Discover and merge nested indexes</button></form>
+  <p>The discovery and merge run in a separate process so the browser remains responsive on very large archives. Only image catalog records are imported; active jobs, leases, and worker state are never merged.</p>
+  {% if merge_running %}<p><b>Status:</b> Running. Refresh this page for progress.</p>{% endif %}
+  {% if merge_status %}
+  <p><b>Last merge status:</b> {{ merge_status.status }}</p>
+  {% if merge_status.discovered is defined %}<p><b>Indexes discovered:</b> {{ merge_status.discovered }}</p>{% endif %}
+  {% if merge_status.totals %}<p><b>Rows:</b> {{ merge_status.totals.rows or 0 }} · <b>Imported:</b> {{ merge_status.totals.imported or 0 }} · <b>Updated:</b> {{ merge_status.totals.updated or 0 }} · <b>Skipped:</b> {{ merge_status.totals.skipped or 0 }}</p>{% endif %}
+  {% if merge_status.error %}<p><b>Error:</b> {{ merge_status.error }}</p>{% endif %}
+  {% endif %}
+  {% else %}<p>No archive folder is selected.</p>{% endif %}
+</div>
+{% endblock %}

@@ -37,15 +37,24 @@ from pathlib import Path
 from app.config import load_config
 cfg = load_config(sys.argv[1])
 failed = []
+
+def mounted_ancestor(path: Path):
+    for candidate in (path, *path.parents):
+        if candidate == Path(candidate.anchor):
+            continue
+        if os.path.ismount(candidate):
+            return candidate
+    return None
+
 for root in cfg.get("image_roots", []):
     if not root.get("enabled", True):
         continue
-    path = Path(root["path"]).expanduser()
+    path = Path(root["path"]).expanduser().resolve()
     if not path.exists() or not path.is_dir():
         failed.append(f"{root.get('name', 'unnamed')}: {path} (missing)")
         continue
-    if root.get("shared") and not os.path.ismount(path):
-        failed.append(f"{root.get('name', 'unnamed')}: {path} (not mounted)")
+    if root.get("shared") and not mounted_ancestor(path):
+        failed.append(f"{root.get('name', 'unnamed')}: {path} (SMB mount ancestor missing)")
 if cfg.get("database_sync", {}).get("enabled"):
     raw_target = str(cfg["database_sync"].get("share_copy", "")).strip()
     if not raw_target:
@@ -60,7 +69,7 @@ if failed:
     print("Windows/shared image root check failed:", file=sys.stderr)
     for item in failed:
         print(f"  - {item}", file=sys.stderr)
-    print("Mount the share read/write before starting, then run: ./control.sh start", file=sys.stderr)
+    print("Open ./control.sh setup to repair the archive configuration, or mount the share and run ./control.sh start.", file=sys.stderr)
     raise SystemExit(2)
 print("All enabled image roots and database-sync paths are accessible.")
 PY
@@ -109,6 +118,16 @@ sync_now() {
   "$PYTHON" -m app.db_sync --config "$CONFIG" --once
 }
 
+setup_only() {
+  local host port
+  host="$(read_config_value server.host)"; host="${host:-127.0.0.1}"
+  port="$(read_config_value server.port)"; port="${port:-8765}"
+  start_process web_ui env IMAGE_LIBRARIAN_CONFIG="$CONFIG" \
+    "$PYTHON" -m uvicorn app.main:app --host "$host" --port "$port"
+  echo "Archive setup: http://$host:$port/setup"
+  echo "Setup mode starts only the local web UI; workers and database synchronization remain stopped."
+}
+
 start_all() {
   check_roots
   local host port count restore
@@ -142,7 +161,7 @@ start_all() {
 
   echo "Web UI: http://$host:$port"
   echo "Coordinator: $COORDINATOR_AGENT | Vision agent: $VISION_AGENT | Workers: $count"
-  sync_enabled && echo "Database sync: enabled (live DB local; consistent snapshots copied to Windows share)"
+  sync_enabled && echo "Database sync: enabled (live DB local; consistent snapshots copied to selected archive)"
 }
 
 stop_all() {
@@ -171,6 +190,7 @@ status_all() {
 }
 
 case "$ACTION" in
+  setup) setup_only ;;
   start) start_all ;;
   stop) stop_all ;;
   restart) stop_all; start_all ;;
@@ -178,5 +198,5 @@ case "$ACTION" in
   check-share) check_roots ;;
   sync-now) sync_now ;;
   logs) tail -n 100 -F "$LOG_DIR"/*.log ;;
-  *) echo "Usage: $0 {start|stop|restart|status|check-share|sync-now|logs}" >&2; exit 2 ;;
+  *) echo "Usage: $0 {setup|start|stop|restart|status|check-share|sync-now|logs}" >&2; exit 2 ;;
 esac

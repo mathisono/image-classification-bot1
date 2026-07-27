@@ -1,11 +1,16 @@
+import json
 import os
+import subprocess
+import sys
 import time
 from pathlib import Path
+from urllib.parse import quote_plus
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from .archive_setup import browse_directories, mount_smb, save_archive_selection
 from .config import load_config
 from .db import connect, execute
 from .imaging import SUPPORTED
@@ -17,6 +22,44 @@ CFG = load_config(CFG_PATH)
 DB = connect(CFG['paths']['database'])
 templates = Jinja2Templates(directory=str(BASE / 'templates'))
 app = FastAPI(title='OpenClaw Image Librarian')
+MERGE_STATUS = BASE / 'data/index_merge_status.json'
+MERGE_PID = BASE / 'data/run/index_merge.pid'
+MERGE_LOG = BASE / 'data/logs/index_merge.log'
+
+
+def _require_local(request: Request) -> None:
+    host = request.client.host if request.client else ''
+    if host not in {'127.0.0.1', '::1', 'localhost'}:
+        raise PermissionError('setup actions are available only from the local machine')
+
+
+def _reload_config() -> None:
+    CFG.clear()
+    CFG.update(load_config(CFG_PATH))
+
+
+def _browser_roots() -> list[str]:
+    candidates = [str(Path.home()), '/mnt', f'/media/{Path.home().name}']
+    candidates.extend(r['path'] for r in CFG.get('image_roots', []) if r.get('enabled', True))
+    return list(dict.fromkeys(str(Path(p).expanduser()) for p in candidates if Path(p).expanduser().is_dir()))
+
+
+def _read_merge_status() -> dict:
+    if not MERGE_STATUS.exists():
+        return {}
+    try:
+        return json.loads(MERGE_STATUS.read_text(encoding='utf-8'))
+    except Exception:
+        return {'status': 'UNKNOWN', 'error': 'merge status file is unreadable'}
+
+
+def _pid_alive(path: Path) -> bool:
+    try:
+        pid = int(path.read_text().strip())
+        os.kill(pid, 0)
+        return True
+    except Exception:
+        return False
 
 
 def _root_label(root: dict) -> str:
@@ -61,11 +104,75 @@ def dashboard(request: Request):
     jobs = {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')}
     workers = DB.execute("SELECT agent_name,worker_id,MAX(heartbeat_at) heartbeat,COUNT(*) jobs FROM jobs WHERE agent_name IS NOT NULL GROUP BY agent_name,worker_id ORDER BY heartbeat DESC LIMIT 25").fetchall()
     recent = DB.execute("SELECT j.*,i.filename FROM jobs j JOIN images i ON i.id=j.image_id ORDER BY j.id DESC LIMIT 25").fetchall()
-    return templates.TemplateResponse('dashboard.html', {
-        'request': request, 'stats': stats, 'jobs': jobs, 'workers': workers, 'recent': recent,
-        'total': sum(stats.values()), 'retry_total': stats.get('NEEDS_REPROCESS', 0),
-        'failed_total': stats.get('FAILED', 0), 'cfg': CFG,
-    })
+    return templates.TemplateResponse('dashboard.html', {'request': request, 'stats': stats, 'jobs': jobs, 'workers': workers, 'recent': recent, 'total': sum(stats.values()), 'retry_total': stats.get('NEEDS_REPROCESS', 0), 'failed_total': stats.get('FAILED', 0), 'cfg': CFG})
+
+
+@app.get('/setup', response_class=HTMLResponse)
+def setup_page(request: Request, path: str = '', message: str = '', error: str = ''):
+    _require_local(request)
+    allowed = _browser_roots()
+    selected_roots = [r['path'] for r in CFG.get('image_roots', []) if r.get('enabled', True)]
+    start = path or (selected_roots[0] if selected_roots else (allowed[0] if allowed else str(Path.home())))
+    try:
+        browser = browse_directories(start, allowed)
+    except Exception as exc:
+        browser = {'path': start, 'parent': None, 'entries': []}
+        error = error or str(exc)
+    return templates.TemplateResponse('setup.html', {'request': request, 'cfg': CFG, 'browser': browser, 'selected': selected_roots[0] if selected_roots else '', 'merge_status': _read_merge_status(), 'merge_running': _pid_alive(MERGE_PID), 'message': message, 'error': error})
+
+
+@app.get('/api/browse')
+def browse_api(request: Request, path: str = ''):
+    _require_local(request)
+    try:
+        return browse_directories(path, _browser_roots())
+    except Exception as exc:
+        return JSONResponse({'error': str(exc)}, status_code=400)
+
+
+@app.get('/api/index-merge-status')
+def index_merge_status(request: Request):
+    _require_local(request)
+    return {'running': _pid_alive(MERGE_PID), **_read_merge_status()}
+
+
+@app.post('/setup/mount-smb')
+def setup_mount_smb(request: Request, share: str = Form(...), mount_point: str = Form('/mnt/image-archive'), username: str = Form(...), password: str = Form(...), domain: str = Form('WORKGROUP')):
+    _require_local(request)
+    try:
+        result = mount_smb(share, mount_point, username, password, domain, str(BASE / 'mount_smb_share.sh'))
+        save_archive_selection(CFG_PATH, result['mount_point'], Path(result['mount_point']).name)
+        _reload_config()
+        return RedirectResponse('/setup?message=SMB+share+mounted+and+selected', status_code=303)
+    except Exception as exc:
+        return RedirectResponse(f'/setup?error={quote_plus(str(exc))}', status_code=303)
+
+
+@app.post('/setup/select-folder')
+def setup_select_folder(request: Request, path: str = Form(...), root_name: str = Form('Selected Image Archive')):
+    _require_local(request)
+    try:
+        save_archive_selection(CFG_PATH, path, root_name)
+        _reload_config()
+        return RedirectResponse('/setup?message=Archive+folder+selected', status_code=303)
+    except Exception as exc:
+        return RedirectResponse(f'/setup?error={quote_plus(str(exc))}', status_code=303)
+
+
+@app.post('/setup/merge-indexes')
+def setup_merge_indexes(request: Request):
+    _require_local(request)
+    roots = [r['path'] for r in CFG.get('image_roots', []) if r.get('enabled', True)]
+    if not roots:
+        return RedirectResponse('/setup?error=No+archive+folder+selected', status_code=303)
+    if _pid_alive(MERGE_PID):
+        return RedirectResponse('/setup?message=Index+merge+is+already+running', status_code=303)
+    MERGE_PID.parent.mkdir(parents=True, exist_ok=True)
+    MERGE_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with MERGE_LOG.open('a', encoding='utf-8') as log:
+        process = subprocess.Popen([sys.executable, '-m', 'app.index_merge', '--config', CFG_PATH, '--status', str(MERGE_STATUS)], cwd=BASE, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+    MERGE_PID.write_text(str(process.pid), encoding='utf-8')
+    return RedirectResponse('/setup?message=Nested+index+discovery+and+merge+started', status_code=303)
 
 
 @app.post('/scan')
@@ -105,13 +212,10 @@ def images(request: Request, q: str = '', status: str = '', root: str = '', limi
     if status == 'RETRY_NEEDED':
         sql += " AND (needs_reprocess=1 OR status='NEEDS_REPROCESS')"
     elif status:
-        sql += ' AND status=?'
-        params.append(status)
+        sql += ' AND status=?'; params.append(status)
     if root:
-        sql += ' AND root_name=?'
-        params.append(root)
-    sql += ' ORDER BY id DESC LIMIT ?'
-    params.append(limit)
+        sql += ' AND root_name=?'; params.append(root)
+    sql += ' ORDER BY id DESC LIMIT ?'; params.append(limit)
     rows = DB.execute(sql, tuple(params)).fetchall()
     roots = [r['root_name'] for r in DB.execute('SELECT DISTINCT root_name FROM images WHERE root_name IS NOT NULL ORDER BY root_name')]
     return templates.TemplateResponse('images.html', {'request': request, 'rows': rows, 'q': q, 'status': status, 'root': root, 'roots': roots})
@@ -132,8 +236,7 @@ def image_detail(request: Request, image_id: int):
 
 @app.post('/images/{image_id}/save')
 def save_image(image_id: int, short_caption: str = Form(''), detailed_description: str = Form(''), category: str = Form(''), tags: str = Form(''), objects: str = Form(''), visible_text: str = Form(''), notes: str = Form(''), retry_focus: str = Form(''), quality_issue: str = Form(''), status: str = Form('DONE')):
-    execute(DB, "UPDATE images SET short_caption=?,detailed_description=?,category=?,tags=?,objects=?,visible_text=?,notes=?,retry_focus=?,quality_issue=?,status=?,needs_reprocess=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",
-            (short_caption, detailed_description, category, tags, objects, visible_text, notes, retry_focus, quality_issue, status, 1 if status == 'NEEDS_REPROCESS' else 0, image_id))
+    execute(DB, "UPDATE images SET short_caption=?,detailed_description=?,category=?,tags=?,objects=?,visible_text=?,notes=?,retry_focus=?,quality_issue=?,status=?,needs_reprocess=?,updated_at=CURRENT_TIMESTAMP WHERE id=?", (short_caption, detailed_description, category, tags, objects, visible_text, notes, retry_focus, quality_issue, status, 1 if status == 'NEEDS_REPROCESS' else 0, image_id))
     return RedirectResponse(f'/images/{image_id}', status_code=303)
 
 
@@ -158,7 +261,4 @@ def remove_failed_records():
 @app.get('/api/stats')
 def api_stats():
     recover_expired_jobs(DB)
-    return {
-        'images': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM images GROUP BY status')},
-        'jobs': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')},
-    }
+    return {'images': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM images GROUP BY status')}, 'jobs': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')}}
