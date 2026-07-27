@@ -117,61 +117,62 @@ def merge_index(active: sqlite3.Connection, source_database: str, archive_root: 
         columns = _source_columns(source)
         select_columns = ['path'] + [c for c in MERGE_COLUMNS if c in columns]
         cursor = source.execute(f"SELECT {','.join(select_columns)} FROM images")
-        active.execute('BEGIN IMMEDIATE')
         while True:
             batch = cursor.fetchmany(max(100, batch_size))
             if not batch:
                 break
             total += len(batch)
-            for row in batch:
-                data = dict(row)
-                relative = str(data.get('relative_path') or '').strip()
-                old_path = str(data.get('path') or '').strip()
-                if relative:
-                    source_file = (source_archive_root / relative).resolve()
-                elif old_path:
-                    old = Path(old_path).expanduser()
+            active.execute('BEGIN IMMEDIATE')
+            try:
+                for row in batch:
+                    data = dict(row)
+                    relative = str(data.get('relative_path') or '').strip()
+                    old_path = str(data.get('path') or '').strip()
+                    if relative:
+                        source_file = (source_archive_root / relative).resolve()
+                    elif old_path:
+                        old = Path(old_path).expanduser()
+                        try:
+                            source_file = old.resolve()
+                            source_file.relative_to(source_archive_root)
+                        except Exception:
+                            skipped += 1
+                            continue
+                    else:
+                        skipped += 1
+                        continue
                     try:
-                        source_file = old.resolve()
-                        source_file.relative_to(source_archive_root)
-                    except Exception:
+                        selected_relative = source_file.relative_to(root)
+                    except ValueError:
                         skipped += 1
                         continue
-                else:
-                    skipped += 1
-                    continue
-                try:
-                    selected_relative = source_file.relative_to(root)
-                except ValueError:
-                    skipped += 1
-                    continue
-                current_path = str(source_file)
-                data['path'] = current_path
-                data['relative_path'] = str(selected_relative)
-                data['root_path'] = str(root)
-                data['root_name'] = root.name or 'Selected Image Archive'
-                existing = active.execute('SELECT id,updated_at FROM images WHERE path=?', (current_path,)).fetchone()
-                fields = ['path'] + [c for c in MERGE_COLUMNS if c in data]
-                values = [data.get(c) for c in fields]
-                if not existing:
-                    placeholders = ','.join('?' for _ in fields)
-                    active.execute(f"INSERT INTO images ({','.join(fields)}) VALUES ({placeholders})", values)
-                    imported += 1
-                else:
-                    source_updated = str(data.get('updated_at') or '')
-                    target_updated = str(existing['updated_at'] or '')
-                    if source_updated and source_updated <= target_updated:
-                        skipped += 1
-                        continue
-                    update_fields = [c for c in fields if c != 'path' and data.get(c) not in (None, '')]
-                    if update_fields:
-                        active.execute(f"UPDATE images SET {','.join(f'{c}=?' for c in update_fields)},updated_at=CURRENT_TIMESTAMP WHERE path=?", [data.get(c) for c in update_fields] + [current_path])
-                        updated += 1
-        active.commit()
+                    current_path = str(source_file)
+                    data['path'] = current_path
+                    data['relative_path'] = str(selected_relative)
+                    data['root_path'] = str(root)
+                    data['root_name'] = root.name or 'Selected Image Archive'
+                    existing = active.execute('SELECT id,updated_at FROM images WHERE path=?', (current_path,)).fetchone()
+                    fields = ['path'] + [c for c in MERGE_COLUMNS if c in data]
+                    values = [data.get(c) for c in fields]
+                    if not existing:
+                        placeholders = ','.join('?' for _ in fields)
+                        active.execute(f"INSERT INTO images ({','.join(fields)}) VALUES ({placeholders})", values)
+                        imported += 1
+                    else:
+                        source_updated = str(data.get('updated_at') or '')
+                        target_updated = str(existing['updated_at'] or '')
+                        if source_updated and source_updated <= target_updated:
+                            skipped += 1
+                            continue
+                        update_fields = [c for c in fields if c != 'path' and data.get(c) not in (None, '')]
+                        if update_fields:
+                            active.execute(f"UPDATE images SET {','.join(f'{c}=?' for c in update_fields)},updated_at=CURRENT_TIMESTAMP WHERE path=?", [data.get(c) for c in update_fields] + [current_path])
+                            updated += 1
+                active.commit()
+            except Exception:
+                active.rollback()
+                raise
         return {'database': str(source_path), 'rows': total, 'imported': imported, 'updated': updated, 'skipped': skipped}
-    except Exception:
-        active.rollback()
-        raise
     finally:
         source.close()
 
