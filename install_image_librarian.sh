@@ -10,16 +10,14 @@ if ! command -v git >/dev/null 2>&1; then
   echo "ERROR: git is required. Install git first." >&2
   exit 1
 fi
-
 if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   echo "ERROR: python3 is required. Install python3 and python3-venv first." >&2
   exit 1
 fi
-
 if ! command -v mount.cifs >/dev/null 2>&1; then
   cat <<'WARN'
 WARNING: mount.cifs was not found.
-Install cifs-utils before using a Windows/SMB image archive:
+Install cifs-utils before using the web SMB setup:
   sudo apt install -y cifs-utils
 WARN
 fi
@@ -56,30 +54,32 @@ cat <<EOF
 Installed Image Librarian at: $APP_DIR
 OpenClaw control prompt: $OPENCLAW_WORKSPACE/IMAGE_LIBRARIAN_PROMPT.md
 
-Next steps:
-1) Create a private SMB credentials file as described in:
-   $APP_DIR/WINDOWS_SHARE_SETUP.md
-2) Mount the Windows share read/write:
-   SMB_CREDENTIALS_FILE="$HOME/.smbcredentials/image-librarian.cred" \
-   SMB_READ_ONLY=false \
-   $APP_DIR/mount_smb_share.sh //SERVER/Share /mnt/image-archive
-3) Edit $APP_DIR/config.yaml:
-   - enable the Windows image root
-   - set database_sync.enabled: true
-   - set database_sync.share_copy under /mnt/image-archive/.image_librarian/
-4) Verify access:
+First-run setup:
+1) Start only the local configuration UI:
+   $APP_DIR/control.sh setup
+2) Open:
+   http://127.0.0.1:8765/setup
+3) In the web page:
+   - enter the Windows SMB share and credentials, or browse an existing mount
+   - select the exact folder to classify
+   - verify the index destination inside that selected folder
+   - review and merge any nested Image Librarian indexes
+4) Start the complete service after setup:
+   $APP_DIR/control.sh restart
+5) Verify:
    $APP_DIR/control.sh check-share
-5) Start the web UI, Betty worker pool, and database synchronization:
-   $APP_DIR/control.sh start
-6) Open: http://127.0.0.1:8765
+   $APP_DIR/control.sh status
 
 Service commands:
+   $APP_DIR/control.sh setup
    $APP_DIR/control.sh start
    $APP_DIR/control.sh status
    $APP_DIR/control.sh sync-now
    $APP_DIR/control.sh stop
    $APP_DIR/control.sh restart
    $APP_DIR/control.sh logs
+
+Web SMB mounting uses sudo noninteractively. If the page reports that sudo is unavailable, run mount_smb_share.sh once in a terminal or configure narrowly scoped passwordless sudo for the required mkdir and mount.cifs commands.
 
 OpenClaw integration:
 - Keep realtime_mini_voice as the existing main coordinator.
