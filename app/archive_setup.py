@@ -76,13 +76,14 @@ def browse_directories(path: str, allowed_roots: list[str]) -> dict[str, Any]:
 def discover_indexes(archive_root: str, active_database: str) -> list[str]:
     root = Path(archive_root).expanduser().resolve()
     active = Path(active_database).expanduser().resolve()
+    selected_archive_copy = (root / INDEX_RELATIVE_PATH).resolve()
     found = []
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if not d.startswith('.') or d == '.image_librarian']
         current = Path(dirpath)
         if current.name == '.image_librarian' and 'image_index.sqlite' in filenames:
             candidate = (current / 'image_index.sqlite').resolve()
-            if candidate != active:
+            if candidate not in {active, selected_archive_copy}:
                 found.append(str(candidate))
             dirnames[:] = []
     return sorted(set(found))
