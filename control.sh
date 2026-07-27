@@ -69,7 +69,7 @@ if failed:
     print("Windows/shared image root check failed:", file=sys.stderr)
     for item in failed:
         print(f"  - {item}", file=sys.stderr)
-    print("Mount the share read/write before starting, then run: ./control.sh start", file=sys.stderr)
+    print("Open ./control.sh setup to repair the archive configuration, or mount the share and run ./control.sh start.", file=sys.stderr)
     raise SystemExit(2)
 print("All enabled image roots and database-sync paths are accessible.")
 PY
@@ -116,6 +116,16 @@ sync_enabled() {
 sync_now() {
   check_roots
   "$PYTHON" -m app.db_sync --config "$CONFIG" --once
+}
+
+setup_only() {
+  local host port
+  host="$(read_config_value server.host)"; host="${host:-127.0.0.1}"
+  port="$(read_config_value server.port)"; port="${port:-8765}"
+  start_process web_ui env IMAGE_LIBRARIAN_CONFIG="$CONFIG" \
+    "$PYTHON" -m uvicorn app.main:app --host "$host" --port "$port"
+  echo "Archive setup: http://$host:$port/setup"
+  echo "Setup mode starts only the local web UI; workers and database synchronization remain stopped."
 }
 
 start_all() {
@@ -180,6 +190,7 @@ status_all() {
 }
 
 case "$ACTION" in
+  setup) setup_only ;;
   start) start_all ;;
   stop) stop_all ;;
   restart) stop_all; start_all ;;
@@ -187,5 +198,5 @@ case "$ACTION" in
   check-share) check_roots ;;
   sync-now) sync_now ;;
   logs) tail -n 100 -F "$LOG_DIR"/*.log ;;
-  *) echo "Usage: $0 {start|stop|restart|status|check-share|sync-now|logs}" >&2; exit 2 ;;
+  *) echo "Usage: $0 {setup|start|stop|restart|status|check-share|sync-now|logs}" >&2; exit 2 ;;
 esac
