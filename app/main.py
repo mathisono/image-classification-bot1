@@ -1,18 +1,13 @@
 import os
 import time
 from pathlib import Path
+from urllib.parse import quote_plus
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from .archive_setup import (
-    browse_directories,
-    discover_indexes,
-    merge_index,
-    mount_smb,
-    save_archive_selection,
-)
+from .archive_setup import browse_directories, discover_indexes, merge_index, mount_smb, save_archive_selection
 from .config import load_config
 from .db import connect, execute
 from .imaging import SUPPORTED
@@ -35,6 +30,12 @@ def _require_local(request: Request) -> None:
 def _reload_config() -> None:
     CFG.clear()
     CFG.update(load_config(CFG_PATH))
+
+
+def _browser_roots() -> list[str]:
+    candidates = [str(Path.home()), '/mnt', f'/media/{Path.home().name}']
+    candidates.extend(r['path'] for r in CFG.get('image_roots', []) if r.get('enabled', True))
+    return list(dict.fromkeys(str(Path(p).expanduser()) for p in candidates if Path(p).expanduser().is_dir()))
 
 
 def _root_label(root: dict) -> str:
@@ -89,14 +90,15 @@ def dashboard(request: Request):
 @app.get('/setup', response_class=HTMLResponse)
 def setup_page(request: Request, path: str = '', message: str = '', error: str = ''):
     _require_local(request)
-    roots = [r['path'] for r in CFG.get('image_roots', []) if r.get('enabled', True)]
-    start = path or (roots[0] if roots else str(Path.home()))
+    allowed = _browser_roots()
+    selected_roots = [r['path'] for r in CFG.get('image_roots', []) if r.get('enabled', True)]
+    start = path or (selected_roots[0] if selected_roots else (allowed[0] if allowed else str(Path.home())))
     try:
-        browser = browse_directories(start, roots or [str(Path.home())])
+        browser = browse_directories(start, allowed)
     except Exception as exc:
         browser = {'path': start, 'parent': None, 'entries': []}
         error = error or str(exc)
-    selected = roots[0] if roots else ''
+    selected = selected_roots[0] if selected_roots else ''
     indexes = discover_indexes(selected, CFG['paths']['database']) if selected and Path(selected).is_dir() else []
     return templates.TemplateResponse('setup.html', {
         'request': request, 'cfg': CFG, 'browser': browser, 'selected': selected,
@@ -107,22 +109,14 @@ def setup_page(request: Request, path: str = '', message: str = '', error: str =
 @app.get('/api/browse')
 def browse_api(request: Request, path: str = ''):
     _require_local(request)
-    roots = [r['path'] for r in CFG.get('image_roots', []) if r.get('enabled', True)] or [str(Path.home())]
     try:
-        return browse_directories(path, roots)
+        return browse_directories(path, _browser_roots())
     except Exception as exc:
         return JSONResponse({'error': str(exc)}, status_code=400)
 
 
 @app.post('/setup/mount-smb')
-def setup_mount_smb(
-    request: Request,
-    share: str = Form(...),
-    mount_point: str = Form('/mnt/image-archive'),
-    username: str = Form(...),
-    password: str = Form(...),
-    domain: str = Form('WORKGROUP'),
-):
+def setup_mount_smb(request: Request, share: str = Form(...), mount_point: str = Form('/mnt/image-archive'), username: str = Form(...), password: str = Form(...), domain: str = Form('WORKGROUP')):
     _require_local(request)
     try:
         result = mount_smb(share, mount_point, username, password, domain, str(BASE / 'mount_smb_share.sh'))
@@ -130,7 +124,7 @@ def setup_mount_smb(
         _reload_config()
         return RedirectResponse('/setup?message=SMB+share+mounted+and+selected', status_code=303)
     except Exception as exc:
-        return RedirectResponse(f'/setup?error={str(exc)}', status_code=303)
+        return RedirectResponse(f'/setup?error={quote_plus(str(exc))}', status_code=303)
 
 
 @app.post('/setup/select-folder')
@@ -141,7 +135,7 @@ def setup_select_folder(request: Request, path: str = Form(...), root_name: str 
         _reload_config()
         return RedirectResponse('/setup?message=Archive+folder+selected', status_code=303)
     except Exception as exc:
-        return RedirectResponse(f'/setup?error={str(exc)}', status_code=303)
+        return RedirectResponse(f'/setup?error={quote_plus(str(exc))}', status_code=303)
 
 
 @app.post('/setup/merge-indexes')
@@ -156,9 +150,10 @@ def setup_merge_indexes(request: Request):
             reports.append(merge_index(DB, source, roots[0]))
         imported = sum(r['imported'] for r in reports)
         updated = sum(r['updated'] for r in reports)
-        return RedirectResponse(f'/setup?message=Merged+{len(reports)}+indexes%3A+{imported}+imported%2C+{updated}+updated', status_code=303)
+        message = f'Merged {len(reports)} indexes: {imported} imported, {updated} updated'
+        return RedirectResponse(f'/setup?message={quote_plus(message)}', status_code=303)
     except Exception as exc:
-        return RedirectResponse(f'/setup?error={str(exc)}', status_code=303)
+        return RedirectResponse(f'/setup?error={quote_plus(str(exc))}', status_code=303)
 
 
 @app.post('/scan')
@@ -225,8 +220,7 @@ def image_detail(request: Request, image_id: int):
 
 @app.post('/images/{image_id}/save')
 def save_image(image_id: int, short_caption: str = Form(''), detailed_description: str = Form(''), category: str = Form(''), tags: str = Form(''), objects: str = Form(''), visible_text: str = Form(''), notes: str = Form(''), retry_focus: str = Form(''), quality_issue: str = Form(''), status: str = Form('DONE')):
-    execute(DB, "UPDATE images SET short_caption=?,detailed_description=?,category=?,tags=?,objects=?,visible_text=?,notes=?,retry_focus=?,quality_issue=?,status=?,needs_reprocess=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",
-            (short_caption, detailed_description, category, tags, objects, visible_text, notes, retry_focus, quality_issue, status, 1 if status == 'NEEDS_REPROCESS' else 0, image_id))
+    execute(DB, "UPDATE images SET short_caption=?,detailed_description=?,category=?,tags=?,objects=?,visible_text=?,notes=?,retry_focus=?,quality_issue=?,status=?,needs_reprocess=?,updated_at=CURRENT_TIMESTAMP WHERE id=?", (short_caption, detailed_description, category, tags, objects, visible_text, notes, retry_focus, quality_issue, status, 1 if status == 'NEEDS_REPROCESS' else 0, image_id))
     return RedirectResponse(f'/images/{image_id}', status_code=303)
 
 
