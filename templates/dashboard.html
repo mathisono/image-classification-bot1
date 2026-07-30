@@ -1,11 +1,91 @@
 {% extends "base.html" %}{% block body %}
 <h1>OpenClaw Image Librarian</h1>
 <div class="card"><h2>Queue status</h2><p><b>Total images:</b> {{ total }}</p>{% for k,v in stats.items() %}<p><b>{{ k }}:</b> {{ v }}</p>{% endfor %}<h3>Jobs</h3>{% for k,v in jobs.items() %}<p><b>{{ k }}:</b> {{ v }}</p>{% endfor %}</div>
-<div class="card"><h2>Controls</h2><p>These actions enqueue work and return immediately. OpenClaw image-worker sub-agents process the queue independently.</p>
-<form method="post" action="/scan"><button>Scan configured folders</button></form>
-<form method="post" action="/scan-path"><h3>Scan a path now</h3><label>Root name</label><input name="root_name"><label>Path</label><input name="path"><label><input type="checkbox" name="shared" checked style="width:auto"> Shared filesystem</label><br><button>Scan this path</button></form>
+<div class="card">
+  <h2>Choose a folder to scan</h2>
+  <p>Browse within a configured image root, select a subdirectory, and scan only that folder tree.</p>
+  {% if browse_roots %}
+  <form method="post" action="/scan-subdirectory" id="directory-scan-form">
+    <label for="browse-root">Configured root</label>
+    <select id="browse-root" name="root_name">
+      {% for root in browse_roots %}<option value="{{ root.name }}">{{ root.name }} — {{ root.path }}</option>{% endfor %}
+    </select>
+    <input type="hidden" id="selected-relative-path" name="relative_path" value="">
+    <p><b>Selected folder:</b> <code id="selected-full-path">Loading…</code></p>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.75rem">
+      <button type="button" id="directory-up" disabled>Up one level</button>
+      <button type="button" id="directory-refresh">Refresh</button>
+    </div>
+    <div id="directory-error" style="display:none" class="error"></div>
+    <div id="directory-list" class="directory-list" style="max-height:24rem;overflow:auto;border:1px solid #666;padding:.5rem;margin-bottom:.75rem"></div>
+    <button type="submit">Scan selected folder</button>
+  </form>
+  {% else %}
+  <p>No enabled image roots are configured.</p>
+  {% endif %}
+</div>
+<div class="card"><h2>Other controls</h2><p>These actions enqueue work and return immediately. OpenClaw image-worker sub-agents process the queue independently.</p>
+<form method="post" action="/scan"><button>Scan all configured folders</button></form>
+<details><summary>Scan a manually entered path</summary><form method="post" action="/scan-path"><label>Root name</label><input name="root_name"><label>Path</label><input name="path"><label><input type="checkbox" name="shared" checked style="width:auto"> Shared filesystem</label><br><button>Scan this path</button></form></details>
 <form method="post" action="/process"><label>Queue image count</label><input name="limit" value="100"><button>Queue next images</button></form>
 <form method="post" action="/retry-needed/process"><label>Queue retry count</label><input name="limit" value="25"><button>Queue retry-needed images</button></form></div>
 <div class="card"><h2>OpenClaw workers</h2><p>Recommended workers: {{ cfg.workers.recommended_count }}. A worker is attributable only when it supplies an explicit <code>agent_name</code>.</p><table><tr><th>Agent</th><th>Worker ID</th><th>Last heartbeat</th><th>Jobs</th></tr>{% for w in workers %}<tr><td>{{ w.agent_name }}</td><td>{{ w.worker_id }}</td><td>{{ w.heartbeat }}</td><td>{{ w.jobs }}</td></tr>{% endfor %}</table></div>
 <div class="card"><h2>Recent job audit</h2><table><tr><th>Image</th><th>Status</th><th>Agent</th><th>Worker</th><th>Attempts</th><th>Error</th></tr>{% for j in recent %}<tr><td>{{ j.filename }}</td><td>{{ j.status }}</td><td>{{ j.agent_name or 'unassigned' }}</td><td>{{ j.worker_id or '' }}</td><td>{{ j.attempt_count }}</td><td>{{ j.last_error or '' }}</td></tr>{% endfor %}</table></div>
+<script>
+(() => {
+  const rootSelect = document.getElementById('browse-root');
+  if (!rootSelect) return;
+  const selectedRelative = document.getElementById('selected-relative-path');
+  const selectedFull = document.getElementById('selected-full-path');
+  const list = document.getElementById('directory-list');
+  const error = document.getElementById('directory-error');
+  const up = document.getElementById('directory-up');
+  const refresh = document.getElementById('directory-refresh');
+  let currentRelative = '';
+  let parentRelative = null;
+
+  async function loadDirectory(relativePath = '') {
+    list.textContent = 'Loading folders…';
+    error.style.display = 'none';
+    const params = new URLSearchParams({root_name: rootSelect.value, relative_path: relativePath});
+    try {
+      const response = await fetch(`/api/directories?${params.toString()}`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Unable to list this directory.');
+      currentRelative = data.current_relative_path || '';
+      parentRelative = data.parent_relative_path;
+      selectedRelative.value = currentRelative;
+      selectedFull.textContent = data.current_path;
+      up.disabled = parentRelative === null;
+      list.replaceChildren();
+      if (!data.directories.length) {
+        const empty = document.createElement('p');
+        empty.textContent = 'No child directories. You can scan this folder now.';
+        list.appendChild(empty);
+        return;
+      }
+      for (const directory of data.directories) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = `📁 ${directory.name}`;
+        button.style.display = 'block';
+        button.style.width = '100%';
+        button.style.textAlign = 'left';
+        button.style.margin = '.2rem 0';
+        button.addEventListener('click', () => loadDirectory(directory.relative_path));
+        list.appendChild(button);
+      }
+    } catch (exc) {
+      list.textContent = '';
+      error.textContent = exc.message;
+      error.style.display = 'block';
+    }
+  }
+
+  rootSelect.addEventListener('change', () => loadDirectory(''));
+  up.addEventListener('click', () => parentRelative !== null && loadDirectory(parentRelative));
+  refresh.addEventListener('click', () => loadDirectory(currentRelative));
+  loadDirectory('');
+})();
+</script>
 {% endblock %}
