@@ -2,7 +2,7 @@ import os
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -21,6 +21,25 @@ app = FastAPI(title='OpenClaw Image Librarian')
 
 def _root_label(root: dict) -> str:
     return root.get('name') or Path(root.get('path', '')).name or 'unnamed_root'
+
+
+def _configured_root(root_name: str) -> dict:
+    for root in CFG.get('image_roots', []):
+        if root.get('enabled', True) and _root_label(root) == root_name:
+            return root
+    raise HTTPException(status_code=404, detail='Configured image root was not found or is disabled.')
+
+
+def _resolve_subdirectory(root: dict, relative_path: str = '') -> tuple[Path, Path]:
+    base = Path(root['path']).expanduser().resolve(strict=True)
+    candidate = (base / (relative_path or '.')).resolve(strict=True)
+    try:
+        candidate.relative_to(base)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail='Selected directory is outside the configured root.') from exc
+    if not candidate.is_dir():
+        raise HTTPException(status_code=400, detail='Selected path is not a directory.')
+    return base, candidate
 
 
 def _safe_scan_root(root: dict) -> int:
@@ -61,11 +80,48 @@ def dashboard(request: Request):
     jobs = {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')}
     workers = DB.execute("SELECT agent_name,worker_id,MAX(heartbeat_at) heartbeat,COUNT(*) jobs FROM jobs WHERE agent_name IS NOT NULL GROUP BY agent_name,worker_id ORDER BY heartbeat DESC LIMIT 25").fetchall()
     recent = DB.execute("SELECT j.*,i.filename FROM jobs j JOIN images i ON i.id=j.image_id ORDER BY j.id DESC LIMIT 25").fetchall()
+    browse_roots = [root for root in CFG.get('image_roots', []) if root.get('enabled', True)]
     return templates.TemplateResponse('dashboard.html', {
         'request': request, 'stats': stats, 'jobs': jobs, 'workers': workers, 'recent': recent,
         'total': sum(stats.values()), 'retry_total': stats.get('NEEDS_REPROCESS', 0),
-        'failed_total': stats.get('FAILED', 0), 'cfg': CFG,
+        'failed_total': stats.get('FAILED', 0), 'cfg': CFG, 'browse_roots': browse_roots,
     })
+
+
+@app.get('/api/directories')
+def list_directories(root_name: str, relative_path: str = ''):
+    root = _configured_root(root_name)
+    base, current = _resolve_subdirectory(root, relative_path)
+    skip_hidden = bool(CFG.get('scanner', {}).get('skip_hidden_dirs', True))
+    directories = []
+    try:
+        for child in current.iterdir():
+            if skip_hidden and child.name.startswith('.'):
+                continue
+            try:
+                if child.is_dir() and not child.is_symlink():
+                    directories.append({
+                        'name': child.name,
+                        'relative_path': str(child.relative_to(base)),
+                    })
+            except (OSError, PermissionError):
+                continue
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail='The selected directory is not readable.') from exc
+    directories.sort(key=lambda item: item['name'].casefold())
+    current_relative = '' if current == base else str(current.relative_to(base))
+    parent_relative = None
+    if current != base:
+        parent = current.parent
+        parent_relative = '' if parent == base else str(parent.relative_to(base))
+    return {
+        'root_name': _root_label(root),
+        'root_path': str(base),
+        'current_relative_path': current_relative,
+        'current_path': str(current),
+        'parent_relative_path': parent_relative,
+        'directories': directories,
+    }
 
 
 @app.post('/scan')
@@ -73,6 +129,21 @@ def scan():
     for root in CFG.get('image_roots', []):
         _safe_scan_root(root)
     return RedirectResponse('/', status_code=303)
+
+
+@app.post('/scan-subdirectory')
+def scan_subdirectory(root_name: str = Form(...), relative_path: str = Form('')):
+    configured = _configured_root(root_name)
+    _, selected = _resolve_subdirectory(configured, relative_path)
+    scan_root = {
+        'name': _root_label(configured),
+        'path': str(selected),
+        'shared': bool(configured.get('shared', False)),
+        'follow_symlinks': False,
+        'enabled': True,
+    }
+    count = _safe_scan_root(scan_root)
+    return RedirectResponse(f'/?scan_count={count}', status_code=303)
 
 
 @app.post('/scan-path')
