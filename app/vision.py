@@ -259,7 +259,8 @@ def classify_with_local_model(analysis_path: str, cfg: dict) -> dict[str, str | 
     if not cfg.get("enabled"):
         return _vision_disabled_result()
 
-    structured_output = cfg.get("structured_output", "pydantic_ai")
+    # Legacy JSON is the safest default for OpenAI-compatible local model servers.
+    structured_output = cfg.get("structured_output", "legacy_json")
     fallback_to_legacy = bool(cfg.get("fallback_to_legacy_json", True))
 
     if structured_output == "legacy_json":

@@ -42,12 +42,13 @@ def _resolve_subdirectory(root: dict, relative_path: str = '') -> tuple[Path, Pa
     return base, candidate
 
 
-def _safe_scan_root(root: dict) -> int:
+def _safe_scan_root(root: dict, con=None) -> int:
     root_path = Path(root['path']).expanduser()
     if not root.get('enabled', True) or not root_path.exists():
         return 0
     count = 0
     stability = int(CFG.get('scanner', {}).get('shared_fs_stability_seconds', 5)) if root.get('shared') else 0
+    scan_db = con or connect(CFG['paths']['database'])
     for dirpath, dirnames, filenames in os.walk(root_path, followlinks=bool(root.get('follow_symlinks', False))):
         if CFG.get('scanner', {}).get('skip_hidden_dirs', True):
             dirnames[:] = [d for d in dirnames if not d.startswith('.')]
@@ -60,7 +61,7 @@ def _safe_scan_root(root: dict) -> int:
                 if stability and time.time() - st.st_mtime < stability:
                     continue
                 rel = str(p.relative_to(root_path))
-                execute(DB, """INSERT INTO images(path,root_name,root_path,relative_path,filename,extension,file_size,source_mtime,source_seen_at,status)
+                execute(scan_db, """INSERT INTO images(path,root_name,root_path,relative_path,filename,extension,file_size,source_mtime,source_seen_at,status)
                     VALUES(?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,'NEW')
                     ON CONFLICT(path) DO UPDATE SET root_name=excluded.root_name,root_path=excluded.root_path,
                     relative_path=excluded.relative_path,filename=excluded.filename,extension=excluded.extension,
@@ -70,6 +71,8 @@ def _safe_scan_root(root: dict) -> int:
                 count += 1
             except (FileNotFoundError, PermissionError):
                 continue
+    if con is None:
+        scan_db.close()
     return count
 
 
@@ -126,8 +129,12 @@ def list_directories(root_name: str, relative_path: str = ''):
 
 @app.post('/scan')
 def scan():
-    for root in CFG.get('image_roots', []):
-        _safe_scan_root(root)
+    scan_db = connect(CFG['paths']['database'])
+    try:
+        for root in CFG.get('image_roots', []):
+            _safe_scan_root(root, scan_db)
+    finally:
+        scan_db.close()
     return RedirectResponse('/', status_code=303)
 
 
@@ -142,14 +149,22 @@ def scan_subdirectory(root_name: str = Form(...), relative_path: str = Form(''))
         'follow_symlinks': False,
         'enabled': True,
     }
-    count = _safe_scan_root(scan_root)
+    scan_db = connect(CFG['paths']['database'])
+    try:
+        count = _safe_scan_root(scan_root, scan_db)
+    finally:
+        scan_db.close()
     return RedirectResponse(f'/?scan_count={count}', status_code=303)
 
 
 @app.post('/scan-path')
 def scan_path(path: str = Form(...), root_name: str = Form(''), shared: str = Form('on')):
     p = Path(path).expanduser()
-    _safe_scan_root({'name': root_name or p.name or 'manual_root', 'path': str(p), 'shared': shared == 'on', 'follow_symlinks': False, 'enabled': True})
+    scan_db = connect(CFG['paths']['database'])
+    try:
+        _safe_scan_root({'name': root_name or p.name or 'manual_root', 'path': str(p), 'shared': shared == 'on', 'follow_symlinks': False, 'enabled': True}, scan_db)
+    finally:
+        scan_db.close()
     return RedirectResponse('/images', status_code=303)
 
 

@@ -11,6 +11,11 @@ image_roots:
   #   shared: true
   #   follow_symlinks: false
   #   enabled: true
+  - name: "Image Archive"
+    path: "/mnt/image-archive"
+    shared: true
+    follow_symlinks: false
+    enabled: true
 
 server:
   host: "127.0.0.1"
@@ -68,10 +73,10 @@ workers:
 
 vision:
   enabled: true
-  base_url: "http://127.0.0.1:1234/v1"
+  base_url: "http://192.168.3.38:1234/v1"
   api_key: "not-needed"
-  model: "lmstudio/zai-org/glm-4.6v-flash"
+  model: "zai-org/glm-4.6v-flash"
   timeout_seconds: 60
-  prompt_version: "image_librarian_identify_beater_v2"
-  structured_output: "pydantic_ai"
+  prompt_version: "image_librarian_text_ocr_v1"
+  structured_output: "legacy_json"
   fallback_to_legacy_json: false
