@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS images (
     quality_issue TEXT, confidence REAL DEFAULT 0, last_retry_at TEXT,
     assigned_worker TEXT, assigned_agent TEXT, processing_started_at TEXT, heartbeat_at TEXT,
     processing_finished_at TEXT, processing_duration_ms INTEGER, last_job_id TEXT,
+    has_face INTEGER CHECK(has_face IN (0,1) OR has_face IS NULL),
+    face_count INTEGER, face_detection_status TEXT DEFAULT 'NOT_PROCESSED',
+    face_detector_model TEXT, face_detection_confidence REAL,
+    face_detected_at TEXT, face_detection_error TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP, processed_at TEXT
 );
 CREATE TABLE IF NOT EXISTS jobs (
@@ -28,10 +32,43 @@ CREATE TABLE IF NOT EXISTS jobs (
     created_at TEXT NOT NULL, updated_at TEXT NOT NULL, started_at TEXT, finished_at TEXT,
     FOREIGN KEY(image_id) REFERENCES images(id)
 );
+CREATE TABLE IF NOT EXISTS people (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    display_name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    notes TEXT,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS person_reference_faces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    person_id INTEGER NOT NULL,
+    source_filename TEXT NOT NULL,
+    stored_path TEXT NOT NULL UNIQUE,
+    mime_type TEXT,
+    file_size INTEGER,
+    confirmation_status TEXT NOT NULL DEFAULT 'MANUALLY_CONFIRMED',
+    processing_status TEXT NOT NULL DEFAULT 'PENDING_DETECTION',
+    detector_model TEXT DEFAULT 'scrfd-det-10g',
+    embedding_model TEXT,
+    face_count INTEGER,
+    selected_face_index INTEGER,
+    embedding BLOB,
+    quality_score REAL,
+    error_message TEXT,
+    confirmed_by TEXT DEFAULT 'local_user',
+    confirmed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    processed_at TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(person_id) REFERENCES people(id) ON DELETE CASCADE
+);
 CREATE INDEX IF NOT EXISTS idx_images_status ON images(status);
 CREATE INDEX IF NOT EXISTS idx_images_needs_reprocess ON images(needs_reprocess);
+CREATE INDEX IF NOT EXISTS idx_images_has_face ON images(has_face);
 CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON jobs(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_jobs_image_active ON jobs(image_id, status);
+CREATE INDEX IF NOT EXISTS idx_reference_person_status ON person_reference_faces(person_id, processing_status);
 CREATE VIRTUAL TABLE IF NOT EXISTS image_fts USING fts5(
     filename, path, relative_path, root_name, short_caption, detailed_description, tags, objects, visible_text, notes,
     content='images', content_rowid='id'
@@ -71,6 +108,13 @@ MIGRATIONS = {
     'processing_finished_at': 'ALTER TABLE images ADD COLUMN processing_finished_at TEXT',
     'processing_duration_ms': 'ALTER TABLE images ADD COLUMN processing_duration_ms INTEGER',
     'last_job_id': 'ALTER TABLE images ADD COLUMN last_job_id TEXT',
+    'has_face': 'ALTER TABLE images ADD COLUMN has_face INTEGER',
+    'face_count': 'ALTER TABLE images ADD COLUMN face_count INTEGER',
+    'face_detection_status': "ALTER TABLE images ADD COLUMN face_detection_status TEXT DEFAULT 'NOT_PROCESSED'",
+    'face_detector_model': 'ALTER TABLE images ADD COLUMN face_detector_model TEXT',
+    'face_detection_confidence': 'ALTER TABLE images ADD COLUMN face_detection_confidence REAL',
+    'face_detected_at': 'ALTER TABLE images ADD COLUMN face_detected_at TEXT',
+    'face_detection_error': 'ALTER TABLE images ADD COLUMN face_detection_error TEXT',
 }
 
 

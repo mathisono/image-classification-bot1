@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% block body %}
+<h1>People and confirmed identities</h1>
+<div class="card">
+  <h2>Create person</h2>
+  <form method="post" action="/people">
+    <label>Display name</label><input name="display_name" required maxlength="160">
+    <label>Notes</label><textarea name="notes" rows="3" placeholder="Optional context, relationship, dates, or naming notes"></textarea>
+    <button>Create person</button>
+  </form>
+</div>
+<div class="card">
+  <h2>Identity gallery</h2>
+  {% if people %}
+  <table><tr><th>Name</th><th>References</th><th>Ready</th><th>Failed</th><th>Enabled</th></tr>
+  {% for p in people %}<tr>
+    <td><a href="/people/{{ p.id }}">{{ p.display_name }}</a></td>
+    <td>{{ p.reference_count or 0 }}</td><td>{{ p.ready_count or 0 }}</td><td>{{ p.failed_count or 0 }}</td>
+    <td>{{ 'yes' if p.enabled else 'no' }}</td>
+  </tr>{% endfor %}</table>
+  {% else %}<p>No people have been enrolled yet.</p>{% endif %}
+</div>
+{% endblock %}

@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 
 from .config import load_config
 from .db import connect, execute
+from .identities import router as identities_router
 from .imaging import SUPPORTED
 from .queue import enqueue_images, recover_expired_jobs
 
@@ -17,6 +18,7 @@ CFG = load_config(CFG_PATH)
 DB = connect(CFG['paths']['database'])
 templates = Jinja2Templates(directory=str(BASE / 'templates'))
 app = FastAPI(title='OpenClaw Image Librarian')
+app.include_router(identities_router)
 
 
 def _root_label(root: dict) -> str:
@@ -103,10 +105,7 @@ def list_directories(root_name: str, relative_path: str = ''):
                 continue
             try:
                 if child.is_dir() and not child.is_symlink():
-                    directories.append({
-                        'name': child.name,
-                        'relative_path': str(child.relative_to(base)),
-                    })
+                    directories.append({'name': child.name, 'relative_path': str(child.relative_to(base))})
             except (OSError, PermissionError):
                 continue
     except PermissionError as exc:
@@ -117,14 +116,8 @@ def list_directories(root_name: str, relative_path: str = ''):
     if current != base:
         parent = current.parent
         parent_relative = '' if parent == base else str(parent.relative_to(base))
-    return {
-        'root_name': _root_label(root),
-        'root_path': str(base),
-        'current_relative_path': current_relative,
-        'current_path': str(current),
-        'parent_relative_path': parent_relative,
-        'directories': directories,
-    }
+    return {'root_name': _root_label(root), 'root_path': str(base), 'current_relative_path': current_relative,
+            'current_path': str(current), 'parent_relative_path': parent_relative, 'directories': directories}
 
 
 @app.post('/scan')
@@ -142,13 +135,8 @@ def scan():
 def scan_subdirectory(root_name: str = Form(...), relative_path: str = Form('')):
     configured = _configured_root(root_name)
     _, selected = _resolve_subdirectory(configured, relative_path)
-    scan_root = {
-        'name': _root_label(configured),
-        'path': str(selected),
-        'shared': bool(configured.get('shared', False)),
-        'follow_symlinks': False,
-        'enabled': True,
-    }
+    scan_root = {'name': _root_label(configured), 'path': str(selected), 'shared': bool(configured.get('shared', False)),
+                 'follow_symlinks': False, 'enabled': True}
     scan_db = connect(CFG['paths']['database'])
     try:
         count = _safe_scan_root(scan_root, scan_db)
@@ -183,21 +171,16 @@ def process_retry_needed(limit: int = Form(25)):
 @app.get('/images', response_class=HTMLResponse)
 def images(request: Request, q: str = '', status: str = '', root: str = '', limit: int = 100):
     params = []
+    sql = 'SELECT images.* FROM image_fts JOIN images ON image_fts.rowid=images.id WHERE image_fts MATCH ?' if q else 'SELECT * FROM images WHERE 1=1'
     if q:
-        sql = 'SELECT images.* FROM image_fts JOIN images ON image_fts.rowid=images.id WHERE image_fts MATCH ?'
         params.append(q)
-    else:
-        sql = 'SELECT * FROM images WHERE 1=1'
     if status == 'RETRY_NEEDED':
         sql += " AND (needs_reprocess=1 OR status='NEEDS_REPROCESS')"
     elif status:
-        sql += ' AND status=?'
-        params.append(status)
+        sql += ' AND status=?'; params.append(status)
     if root:
-        sql += ' AND root_name=?'
-        params.append(root)
-    sql += ' ORDER BY id DESC LIMIT ?'
-    params.append(limit)
+        sql += ' AND root_name=?'; params.append(root)
+    sql += ' ORDER BY id DESC LIMIT ?'; params.append(limit)
     rows = DB.execute(sql, tuple(params)).fetchall()
     roots = [r['root_name'] for r in DB.execute('SELECT DISTINCT root_name FROM images WHERE root_name IS NOT NULL ORDER BY root_name')]
     return templates.TemplateResponse('images.html', {'request': request, 'rows': rows, 'q': q, 'status': status, 'root': root, 'roots': roots})
@@ -244,7 +227,5 @@ def remove_failed_records():
 @app.get('/api/stats')
 def api_stats():
     recover_expired_jobs(DB)
-    return {
-        'images': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM images GROUP BY status')},
-        'jobs': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')},
-    }
+    return {'images': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM images GROUP BY status')},
+            'jobs': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')}}
