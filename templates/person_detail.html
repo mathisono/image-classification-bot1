@@ -1,0 +1,33 @@
+{% extends "base.html" %}{% block body %}
+<h1>{{ person.display_name }}</h1>
+<div class="card"><p>{{ person.notes or 'No notes.' }}</p><p><a href="/people">Back to people</a></p></div>
+<div class="card">
+  <h2>Upload a confirmed reference image</h2>
+  <p>Use a clear photo where this person is positively known. The upload is stored locally and queued for SCRFD detection and later embedding generation.</p>
+  <form method="post" action="/people/{{ person.id }}/reference" enctype="multipart/form-data">
+    <label>Reference image</label><input type="file" name="image" accept="image/jpeg,image/png,image/webp" required>
+    <label>Notes about this reference</label><textarea name="notes" rows="3" placeholder="Optional date, source, or why the identity is certain"></textarea>
+    <label><input type="checkbox" name="confirmation" value="confirmed" required style="width:auto"> I positively confirm that the uploaded image shows {{ person.display_name }}.</label><br>
+    <button>Upload confirmed reference</button>
+  </form>
+</div>
+<div class="card">
+  <h2>Reference images</h2>
+  {% if references %}
+  <div class="reference-grid">
+  {% for r in references %}
+    <div class="reference-card">
+      <img class="reference-image" src="/people/{{ person.id }}/reference/{{ r.id }}/image" alt="Reference for {{ person.display_name }}">
+      <p><b>{{ r.source_filename }}</b></p>
+      <p>Confirmation: {{ r.confirmation_status }}</p>
+      <p>Processing: {{ r.processing_status }}</p>
+      <p>Detector: {{ r.detector_model or 'not assigned' }}</p>
+      {% if r.face_count is not none %}<p>Faces found: {{ r.face_count }}</p>{% endif %}
+      {% if r.error_message %}<p class="bad">{{ r.error_message }}</p>{% endif %}
+      <form method="post" action="/people/{{ person.id }}/reference/{{ r.id }}/remove" onsubmit="return confirm('Remove this reference from the identity gallery?');"><button>Remove reference</button></form>
+    </div>
+  {% endfor %}
+  </div>
+  {% else %}<p>No confirmed reference images uploaded yet.</p>{% endif %}
+</div>
+{% endblock %}
