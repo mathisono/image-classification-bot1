@@ -136,3 +136,9 @@ def remove_reference(person_id: int, reference_id: int):
     if path.is_file():
         path.unlink()
     return RedirectResponse(f'/people/{person_id}', status_code=303)
+
+
+# Keep feature routers behind the already-mounted identities router so app.main
+# does not need to know about every optional Web UI section.
+from .archive_map import router as archive_map_router  # noqa: E402
+router.include_router(archive_map_router)
