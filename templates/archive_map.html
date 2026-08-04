@@ -1,0 +1,135 @@
+{% extends "base.html" %}{% block body %}
+<h1>Archive Map</h1>
+<p>Generate a visual, word-labeled map only when you request it. Every regeneration is saved as a timestamped JSON and SVG snapshot.</p>
+<div class="card">
+  <h2>Generate a new snapshot</h2>
+  {% if active %}<p class="bad"><b>{{ active.generation_id }}</b> is {{ active.status }}. A second map worker will not be started.</p>{% endif %}
+  <form method="post" action="/archive-map/generate">
+    <label>Arrange map by</label>
+    <select name="layout_mode">
+      {% for value,label in layout_modes.items() %}<option value="{{ value }}" {% if value == cfg.archive_map.default_mode %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <label>Limit to root</label>
+    <select name="root_name"><option value="">All indexed roots</option>{% for root in roots %}<option value="{{ root }}">{{ root }}</option>{% endfor %}</select>
+    <label>Optional relative path prefix</label><input name="relative_path" placeholder="0_Today/Data_Archive">
+    <label>Maximum points</label><input name="max_points" type="number" min="10" max="{{ cfg.archive_map.max_points }}" value="2000">
+    <button {% if active %}disabled{% endif %}>Generate timestamped map</button>
+  </form>
+  <p><small>The one-shot <code>map_worker_gui</code> starts only from this button and exits after the snapshot succeeds or fails. Visual and hybrid modes require stored visual embeddings.</small></p>
+</div>
+
+{% if selected %}
+<div class="card">
+  <h2>Snapshot {{ selected.generation_id }}</h2>
+  <p><b>Status:</b> <span id="generation-status">{{ selected.status }}</span> · <b>Mode:</b> {{ selected.layout_mode }} · <b>Requested:</b> {{ selected.requested_at }}</p>
+  {% if selected.status == 'FAILED' %}<p class="bad">{{ selected.last_error }}</p>{% endif %}
+  {% if selected.status == 'DONE' %}
+  <p><a href="/archive-map/snapshots/{{ selected.generation_id }}.svg" target="_blank">Open saved SVG</a> · <a href="/archive-map/snapshots/{{ selected.generation_id }}.json" target="_blank">Open saved JSON</a></p>
+  <div class="map-toolbar">
+    <input id="map-search" placeholder="Highlight words, objects, people, filenames…">
+    <button type="button" id="reset-view">Reset view</button>
+    <span id="map-count"></span>
+  </div>
+  <div id="archive-map-stage" class="archive-map-stage"><svg id="archive-map-svg" viewBox="0 0 1200 760" aria-label="Interactive archive map"></svg><div id="map-tooltip" class="map-tooltip"></div></div>
+  <div id="point-editor" class="point-editor" hidden>
+    <h3>Selected image</h3>
+    <p id="point-summary"></p>
+    <p><a id="point-open" href="#" target="_blank">Open image record</a></p>
+    <form method="post" action="/archive-map/overrides">
+      <input type="hidden" name="generation_id" value="{{ selected.generation_id }}">
+      <input type="hidden" name="layout_mode" value="{{ selected.layout_mode }}">
+      <input type="hidden" name="image_id" id="override-image-id">
+      <label>Corrected X (0–1)</label><input name="x" id="override-x">
+      <label>Corrected Y (0–1)</label><input name="y" id="override-y">
+      <label>Optional corrected label</label><input name="label" id="override-label">
+      <label>Notes</label><textarea name="notes" id="override-notes"></textarea>
+      <label><input type="checkbox" name="hidden" style="width:auto"> Hide this point on future generations</label><br>
+      <button>Save correction</button>
+    </form>
+    <p><small>Shift-drag a point to move it, then save the corrected coordinates. Corrections persist across future regenerations of this layout mode.</small></p>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="card"><h2>Generation history</h2>
+<table><tr><th>Requested</th><th>Mode</th><th>Status</th><th>Points</th><th>Duration</th><th>Snapshot</th></tr>
+{% for generation in generations %}<tr><td>{{ generation.requested_at }}</td><td>{{ generation.layout_mode }}</td><td>{{ generation.status }}</td><td>{{ generation.point_count or '' }}</td><td>{% if generation.processing_duration_ms %}{{ generation.processing_duration_ms }} ms{% endif %}</td><td><a href="/archive-map?generation_id={{ generation.generation_id }}">View</a>{% if generation.status == 'DONE' %} · <a href="/archive-map/snapshots/{{ generation.generation_id }}.svg" target="_blank">SVG</a>{% endif %}</td></tr>{% endfor %}
+</table></div>
+
+{% if selected and selected.status in ('QUEUED','RUNNING') %}<script>setTimeout(() => location.reload(), 3000);</script>{% endif %}
+{% if selected and selected.status == 'DONE' %}
+<script>
+(async () => {
+  const response = await fetch('/archive-map/snapshots/{{ selected.generation_id }}.json');
+  const data = await response.json();
+  const svg = document.getElementById('archive-map-svg');
+  const tooltip = document.getElementById('map-tooltip');
+  const search = document.getElementById('map-search');
+  const count = document.getElementById('map-count');
+  const editor = document.getElementById('point-editor');
+  const summary = document.getElementById('point-summary');
+  const openLink = document.getElementById('point-open');
+  const ns = 'http://www.w3.org/2000/svg';
+  const palette = ['#5bc0eb','#fde74c','#9bc53d','#e55934','#fa7921','#a78bfa','#f472b6','#2dd4bf','#60a5fa','#fbbf24','#fb7185','#34d399'];
+  let view = {x:0,y:0,w:1200,h:760};
+  let panning = false, panStart = null, draggingPoint = null;
+  const pointElements = [];
+  const setView = () => svg.setAttribute('viewBox', `${view.x} ${view.y} ${view.w} ${view.h}`);
+  setView();
+
+  const background = document.createElementNS(ns, 'rect');
+  background.setAttribute('width','1200'); background.setAttribute('height','760'); background.setAttribute('fill','#0b1020');
+  svg.appendChild(background);
+  for (const label of data.labels) {
+    const text = document.createElementNS(ns, 'text');
+    text.setAttribute('x', 35 + label.x * 1130); text.setAttribute('y', 35 + label.y * 690);
+    text.setAttribute('text-anchor','middle'); text.setAttribute('fill','#e2e8f0'); text.setAttribute('opacity','.72');
+    text.setAttribute('font-size', Math.min(38, 14 + Math.log2(Math.max(1,label.count))*4)); text.setAttribute('font-weight','700');
+    text.textContent = label.text; svg.appendChild(text);
+  }
+  for (const point of data.points) {
+    const circle = document.createElementNS(ns, 'circle');
+    circle.setAttribute('cx', 35 + point.x * 1130); circle.setAttribute('cy', 35 + point.y * 690); circle.setAttribute('r','5');
+    circle.setAttribute('fill', palette[point.cluster_id % palette.length]); circle.setAttribute('opacity','.82'); circle.style.cursor='pointer';
+    circle.dataset.haystack = JSON.stringify(point).toLowerCase();
+    circle.addEventListener('mouseenter', () => { tooltip.style.display='block'; tooltip.textContent = point.override_label || point.caption || point.filename; });
+    circle.addEventListener('mousemove', event => { tooltip.style.left=`${event.offsetX+18}px`; tooltip.style.top=`${event.offsetY+18}px`; });
+    circle.addEventListener('mouseleave', () => tooltip.style.display='none');
+    circle.addEventListener('click', event => {
+      event.stopPropagation(); editor.hidden=false;
+      summary.textContent = `${point.filename} — ${point.caption || point.description || 'No description'}`;
+      openLink.href=point.detail_url;
+      document.getElementById('override-image-id').value=point.image_id;
+      document.getElementById('override-x').value=point.x;
+      document.getElementById('override-y').value=point.y;
+      document.getElementById('override-label').value=point.override_label || '';
+      document.getElementById('override-notes').value=point.override_notes || '';
+    });
+    circle.addEventListener('pointerdown', event => { if (event.shiftKey) { event.stopPropagation(); draggingPoint={circle,point}; circle.setPointerCapture(event.pointerId); } });
+    circle.addEventListener('pointermove', event => {
+      if (!draggingPoint || draggingPoint.circle !== circle) return;
+      const rect=svg.getBoundingClientRect();
+      const x=view.x + event.offsetX/rect.width*view.w; const y=view.y + event.offsetY/rect.height*view.h;
+      circle.setAttribute('cx',x); circle.setAttribute('cy',y);
+      const nx=Math.max(0,Math.min(1,(x-35)/1130)); const ny=Math.max(0,Math.min(1,(y-35)/690));
+      document.getElementById('override-x').value=nx.toFixed(7); document.getElementById('override-y').value=ny.toFixed(7);
+    });
+    circle.addEventListener('pointerup', () => draggingPoint=null);
+    svg.appendChild(circle); pointElements.push(circle);
+  }
+  count.textContent = `${data.point_count} points · ${data.cluster_count} labels · generated ${data.generated_at}`;
+  search.addEventListener('input', () => {
+    const query=search.value.trim().toLowerCase(); let matches=0;
+    for (const circle of pointElements) { const match=!query || circle.dataset.haystack.includes(query); circle.setAttribute('opacity', match ? '.9' : '.08'); circle.setAttribute('r', match && query ? '8' : '5'); if(match) matches++; }
+    count.textContent = query ? `${matches} of ${pointElements.length} points match` : `${data.point_count} points · ${data.cluster_count} labels`;
+  });
+  svg.addEventListener('wheel', event => { event.preventDefault(); const factor=event.deltaY>0?1.15:.87; view.w*=factor; view.h*=factor; setView(); }, {passive:false});
+  background.addEventListener('pointerdown', event => { panning=true; panStart={x:event.clientX,y:event.clientY,vx:view.x,vy:view.y}; background.setPointerCapture(event.pointerId); });
+  background.addEventListener('pointermove', event => { if(!panning)return; const rect=svg.getBoundingClientRect(); view.x=panStart.vx-(event.clientX-panStart.x)/rect.width*view.w; view.y=panStart.vy-(event.clientY-panStart.y)/rect.height*view.h; setView(); });
+  background.addEventListener('pointerup', () => panning=false);
+  document.getElementById('reset-view').addEventListener('click', () => { view={x:0,y:0,w:1200,h:760}; setView(); });
+})().catch(error => { document.getElementById('archive-map-stage').textContent=`Could not load snapshot: ${error}`; });
+</script>
+{% endif %}
+{% endblock %}
