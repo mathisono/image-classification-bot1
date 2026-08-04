@@ -4,7 +4,7 @@ Archive Map is an on-demand, versioned visual browser for the Image Librarian da
 
 ## On-demand execution
 
-No persistent map or embedding worker runs in the background. Clicking **Generate timestamped map** creates one `map_generations` record and launches one `map_worker_gui` process. The process produces a JSON snapshot plus a static SVG, updates its database audit record, and exits.
+No persistent map or embedding worker runs in the background. Clicking **Generate timestamped map** creates one `map_generations` record and launches one `map_worker_gui` process. The process produces a JSON snapshot plus a static SVG, updates its database audit record, and exits. A configurable hard timeout and stale-PID recovery prevent abandoned generations from blocking the GUI.
 
 Snapshots are stored under `paths.map_snapshots` with a local date/time in the filename. Previous generations remain available in the Web UI so changes can be compared over time.
 
