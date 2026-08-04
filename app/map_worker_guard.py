@@ -40,7 +40,7 @@ def main() -> None:
     command = [
         sys.executable,
         '-m',
-        'app.map_worker',
+        'app.map_worker_with_metadata',
         '--config',
         str(Path(args.config).expanduser().resolve()),
         '--generation-id',
