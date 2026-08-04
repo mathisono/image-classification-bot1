@@ -63,12 +63,76 @@ CREATE TABLE IF NOT EXISTS person_reference_faces (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(person_id) REFERENCES people(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS image_embeddings (
+    image_id INTEGER NOT NULL,
+    embedding_type TEXT NOT NULL,
+    model_name TEXT NOT NULL,
+    dimensions INTEGER NOT NULL,
+    embedding BLOB NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(image_id, embedding_type, model_name),
+    FOREIGN KEY(image_id) REFERENCES images(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS image_people (
+    image_id INTEGER NOT NULL,
+    person_id INTEGER NOT NULL,
+    detected_face_id INTEGER,
+    source TEXT NOT NULL DEFAULT 'recognition',
+    confidence REAL,
+    confirmation_status TEXT NOT NULL DEFAULT 'POSSIBLE_MATCH',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(image_id, person_id, source),
+    FOREIGN KEY(image_id) REFERENCES images(id) ON DELETE CASCADE,
+    FOREIGN KEY(person_id) REFERENCES people(id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS map_generations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    generation_id TEXT UNIQUE NOT NULL,
+    status TEXT NOT NULL DEFAULT 'QUEUED',
+    layout_mode TEXT NOT NULL,
+    options_json TEXT,
+    map_version TEXT,
+    snapshot_path TEXT,
+    snapshot_svg_path TEXT,
+    point_count INTEGER,
+    cluster_count INTEGER,
+    source_image_count INTEGER,
+    embedding_model TEXT,
+    worker_pid INTEGER,
+    worker_id TEXT,
+    agent_name TEXT,
+    log_path TEXT,
+    requested_at TEXT NOT NULL,
+    started_at TEXT,
+    finished_at TEXT,
+    processing_duration_ms INTEGER,
+    last_error TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS map_point_overrides (
+    image_id INTEGER NOT NULL,
+    layout_mode TEXT NOT NULL,
+    x REAL,
+    y REAL,
+    label TEXT,
+    hidden INTEGER NOT NULL DEFAULT 0,
+    notes TEXT,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(image_id, layout_mode),
+    FOREIGN KEY(image_id) REFERENCES images(id) ON DELETE CASCADE
+);
 CREATE INDEX IF NOT EXISTS idx_images_status ON images(status);
 CREATE INDEX IF NOT EXISTS idx_images_needs_reprocess ON images(needs_reprocess);
 CREATE INDEX IF NOT EXISTS idx_images_has_face ON images(has_face);
 CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON jobs(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_jobs_image_active ON jobs(image_id, status);
 CREATE INDEX IF NOT EXISTS idx_reference_person_status ON person_reference_faces(person_id, processing_status);
+CREATE INDEX IF NOT EXISTS idx_image_embeddings_type ON image_embeddings(embedding_type, model_name);
+CREATE INDEX IF NOT EXISTS idx_image_people_person ON image_people(person_id, confirmation_status);
+CREATE INDEX IF NOT EXISTS idx_map_generations_status ON map_generations(status, requested_at);
 CREATE VIRTUAL TABLE IF NOT EXISTS image_fts USING fts5(
     filename, path, relative_path, root_name, short_caption, detailed_description, tags, objects, visible_text, notes,
     content='images', content_rowid='id'
