@@ -47,4 +47,5 @@ def load_config(path: str):
     cfg['archive_map'].setdefault('max_points', 5000)
     cfg['archive_map'].setdefault('map_version', 'archive_map_v1')
     cfg['archive_map'].setdefault('one_shot_worker', True)
+    cfg['archive_map'].setdefault('timeout_seconds', 900)
     return cfg
