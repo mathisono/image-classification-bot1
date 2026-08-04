@@ -6,20 +6,29 @@ import threading
 import time
 from pathlib import Path
 
+from . import vision as vision_module
 from .config import load_config
 from .db import connect, execute
 from .imaging import make_derivatives
 from .metadata import extract_original_metadata
 from .metadata_db import ensure_metadata_schema, store_original_metadata
 from .queue import claim_job, finish_job, heartbeat
-from .vision import classify_with_local_model
 
 
 def _classify_child(path: str, cfg: dict, out: mp.Queue, metadata_context: str = '') -> None:
+    original_prompt = vision_module.VISION_PROMPT
     try:
-        out.put(('ok', classify_with_local_model(path, cfg, metadata_context=metadata_context)))
+        if metadata_context:
+            vision_module.VISION_PROMPT = (
+                original_prompt
+                + '\n\nAUXILIARY ORIGINAL-FILE METADATA:\n'
+                + metadata_context
+            )
+        out.put(('ok', vision_module.classify_with_local_model(path, cfg)))
     except BaseException as exc:
         out.put(('error', f'{type(exc).__name__}: {exc}'))
+    finally:
+        vision_module.VISION_PROMPT = original_prompt
 
 
 def classify_with_hard_timeout(
