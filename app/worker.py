@@ -9,20 +9,31 @@ from pathlib import Path
 from .config import load_config
 from .db import connect, execute
 from .imaging import make_derivatives
+from .metadata import extract_original_metadata
+from .metadata_db import ensure_metadata_schema, store_original_metadata
 from .queue import claim_job, finish_job, heartbeat
 from .vision import classify_with_local_model
 
 
-def _classify_child(path: str, cfg: dict, out: mp.Queue) -> None:
+def _classify_child(path: str, cfg: dict, out: mp.Queue, metadata_context: str = '') -> None:
     try:
-        out.put(('ok', classify_with_local_model(path, cfg)))
+        out.put(('ok', classify_with_local_model(path, cfg, metadata_context=metadata_context)))
     except BaseException as exc:
         out.put(('error', f'{type(exc).__name__}: {exc}'))
 
 
-def classify_with_hard_timeout(path: str, cfg: dict, timeout_seconds: int) -> dict:
+def classify_with_hard_timeout(
+    path: str,
+    cfg: dict,
+    timeout_seconds: int,
+    metadata_context: str = '',
+) -> dict:
     out: mp.Queue = mp.Queue(maxsize=1)
-    proc = mp.Process(target=_classify_child, args=(path, cfg, out), daemon=True)
+    proc = mp.Process(
+        target=_classify_child,
+        args=(path, cfg, out, metadata_context),
+        daemon=True,
+    )
     proc.start()
     proc.join(timeout_seconds)
     if proc.is_alive():
@@ -57,12 +68,27 @@ def process_job(con, job: dict, cfg: dict, lease_seconds: int, hard_timeout: int
         source = Path(image['path'])
         if not source.exists():
             raise FileNotFoundError('source path no longer exists; shared filesystem may be offline or file moved')
+
+        max_pixels = int(cfg['safety']['max_decode_pixels'])
+
+        # Metadata is read from the untouched original and committed before any
+        # thumbnail/analysis copy is created or sent to the classification model.
+        # Missing metadata is normal and records NO_METADATA. Extraction errors
+        # are retained in image_metadata but do not block the rest of the job.
+        metadata = extract_original_metadata(str(source), max_pixels)
+        store_original_metadata(con, image['id'], metadata)
+
         width, height, thumb, analysis = make_derivatives(
             image['path'], image['id'], cfg['paths']['thumbnails'], cfg['paths']['analysis'],
             int(cfg['safety']['thumbnail_max_side_px']), int(cfg['safety']['vision_max_side_px']),
-            int(cfg['safety']['max_decode_pixels'])
+            max_pixels,
         )
-        result = classify_with_hard_timeout(analysis, cfg.get('vision', {}), hard_timeout)
+        result = classify_with_hard_timeout(
+            analysis,
+            cfg.get('vision', {}),
+            hard_timeout,
+            metadata_context=str(metadata.get('metadata_prompt_context') or ''),
+        )
         needs = int(result.get('needs_reprocess', 0) or 0)
         next_status = 'NEEDS_REPROCESS' if needs else 'DONE'
         elapsed_ms = int((time.monotonic() - started) * 1000)
@@ -92,6 +118,7 @@ def process_job(con, job: dict, cfg: dict, lease_seconds: int, hard_timeout: int
 def run_worker(cfg_path: str, worker_id: str, agent_name: str, once: bool = False) -> None:
     cfg = load_config(cfg_path)
     con = connect(cfg['paths']['database'])
+    ensure_metadata_schema(con)
     workers = cfg.get('workers', {})
     lease_seconds = int(workers.get('lease_seconds', 120))
     hard_timeout = int(workers.get('hard_timeout_seconds', 75))
