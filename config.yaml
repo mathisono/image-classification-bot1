@@ -35,6 +35,7 @@ archive_map:
   map_version: "archive_map_v1"
   # The map worker starts only from the Archive Map GUI and exits after one generation.
   one_shot_worker: true
+  timeout_seconds: 900
 
 database_sync:
   enabled: false
