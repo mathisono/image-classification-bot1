@@ -64,10 +64,54 @@ def _generation_row(con, generation_id: str):
     ).fetchone()
 
 
+def _pid_alive(pid) -> bool:
+    if not pid:
+        return False
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except (OSError, TypeError, ValueError):
+        return False
+
+
+def _recover_stale_generations(con) -> int:
+    recovered = 0
+    now = datetime.now().astimezone()
+    rows = con.execute(
+        "SELECT * FROM map_generations WHERE status IN ('QUEUED','RUNNING')"
+    ).fetchall()
+    for row in rows:
+        stale = False
+        if row["worker_pid"]:
+            stale = not _pid_alive(row["worker_pid"])
+        else:
+            try:
+                requested = datetime.fromisoformat(row["requested_at"])
+                stale = (now - requested).total_seconds() > 60
+            except (TypeError, ValueError):
+                stale = True
+        if not stale:
+            continue
+        execute(
+            con,
+            """UPDATE map_generations SET status='FAILED',last_error=?,finished_at=?,updated_at=?
+               WHERE generation_id=? AND status IN ('QUEUED','RUNNING')""",
+            (
+                "Map worker exited without completing. Inspect the recorded generation log.",
+                now.isoformat(),
+                now.isoformat(),
+                row["generation_id"],
+            ),
+        )
+        recovered += 1
+    return recovered
+
+
 @router.get("/archive-map", response_class=HTMLResponse)
 def archive_map_page(request: Request, generation_id: str = ""):
     con = _db()
     try:
+        _recover_stale_generations(con)
         generations = con.execute(
             """SELECT * FROM map_generations
                ORDER BY id DESC LIMIT 100"""
@@ -128,6 +172,7 @@ def generate_archive_map(
         "max_points": max_points,
     }
     try:
+        _recover_stale_generations(con)
         active = con.execute(
             """SELECT generation_id FROM map_generations
                WHERE status IN ('QUEUED','RUNNING') ORDER BY id DESC LIMIT 1"""
@@ -158,7 +203,7 @@ def generate_archive_map(
         command = [
             sys.executable,
             "-m",
-            "app.map_worker",
+            "app.map_worker_guard",
             "--config",
             str(CFG_PATH),
             "--generation-id",
@@ -213,6 +258,7 @@ def generate_archive_map(
 def map_generation_status(generation_id: str):
     con = _db()
     try:
+        _recover_stale_generations(con)
         row = _generation_row(con, generation_id)
         if not row:
             raise HTTPException(status_code=404, detail="Map generation was not found.")
