@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .config import load_config
@@ -19,6 +20,9 @@ DB = connect(CFG['paths']['database'])
 templates = Jinja2Templates(directory=str(BASE / 'templates'))
 app = FastAPI(title='OpenClaw Image Librarian')
 app.include_router(identities_router)
+STATIC_DIR = BASE / 'static'
+if STATIC_DIR.is_dir():
+    app.mount('/static', StaticFiles(directory=str(STATIC_DIR)), name='static')
 
 
 def _root_label(root: dict) -> str:

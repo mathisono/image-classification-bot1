@@ -116,6 +116,10 @@ map_worker._row_text = _row_text
 map_worker._query_rows = _query_rows
 map_worker._date_layout = _date_layout
 
+# Public entry point used by the dispatcher so small maps retain the
+# metadata-aware query/layout patches above.
+run_generation = map_worker.run_generation
+
 
 if __name__ == '__main__':
     map_worker.main()
