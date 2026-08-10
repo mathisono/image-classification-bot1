@@ -141,7 +141,9 @@ def remove_reference(person_id: int, reference_id: int):
 # Keep feature routers behind the already-mounted identities router so app.main
 # does not need to know about every optional Web UI section.
 from .archive_map import router as archive_map_router  # noqa: E402
+from .archive_map_scale import router as archive_map_scale_router  # noqa: E402
 from .metadata_ui import router as metadata_router  # noqa: E402
 
 router.include_router(archive_map_router)
+router.include_router(archive_map_scale_router)
 router.include_router(metadata_router)
