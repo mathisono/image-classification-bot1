@@ -44,8 +44,10 @@ def load_config(path: str):
     cfg['database_sync'].setdefault('interval_seconds', 300)
     cfg['database_sync'].setdefault('restore_if_local_missing', True)
     cfg['archive_map'].setdefault('default_mode', 'objects')
-    cfg['archive_map'].setdefault('max_points', 5000)
-    cfg['archive_map'].setdefault('map_version', 'archive_map_v1')
+    cfg['archive_map'].setdefault('max_points', 1000000)
+    cfg['archive_map'].setdefault('large_map_threshold', 50000)
+    cfg['archive_map'].setdefault('map_version', 'archive_map_v2')
     cfg['archive_map'].setdefault('one_shot_worker', True)
-    cfg['archive_map'].setdefault('timeout_seconds', 900)
+    cfg['archive_map'].setdefault('timeout_seconds', 3600)
+    cfg['archive_map'].setdefault('search_result_limit', 10000)
     return cfg

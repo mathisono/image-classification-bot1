@@ -26,16 +26,21 @@ paths:
   database: "data/image_index.sqlite"
   thumbnails: "cache/thumbnails"
   analysis: "cache/analysis"
-  # Each GUI-requested Archive Map regeneration creates timestamped JSON and SVG files here.
+  # Each GUI-requested Archive Map regeneration creates timestamped files here.
   map_snapshots: "data/map_snapshots"
 
 archive_map:
   default_mode: "objects"
-  max_points: 5000
-  map_version: "archive_map_v1"
+  # Hard GUI/generator ceiling. Large mode uses compact binary point buffers.
+  max_points: 1000000
+  # Up to this size the original metadata-rich JSON/SVG renderer is retained.
+  large_map_threshold: 50000
+  map_version: "archive_map_v2"
   # The map worker starts only from the Archive Map GUI and exits after one generation.
   one_shot_worker: true
-  timeout_seconds: 900
+  # Million-point generation can take substantially longer than a small snapshot.
+  timeout_seconds: 3600
+  search_result_limit: 10000
 
 database_sync:
   enabled: false
@@ -54,7 +59,7 @@ scanner:
   skip_hidden_dirs: true
   shared_fs_stability_seconds: 5
   mark_missing_as: "MISSING_SOURCE"
-  expected_archive_size: 500000
+  expected_archive_size: 1000000
 
 safety:
   max_original_file_mb: 300
