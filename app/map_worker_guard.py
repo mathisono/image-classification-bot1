@@ -36,11 +36,11 @@ def main() -> None:
     args = parser.parse_args()
 
     cfg = load_config(args.config)
-    timeout_seconds = max(30, int(cfg.get('archive_map', {}).get('timeout_seconds', 900)))
+    timeout_seconds = max(30, int(cfg.get('archive_map', {}).get('timeout_seconds', 3600)))
     command = [
         sys.executable,
         '-m',
-        'app.map_worker_with_metadata',
+        'app.map_dispatcher_cli',
         '--config',
         str(Path(args.config).expanduser().resolve()),
         '--generation-id',
