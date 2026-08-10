@@ -44,6 +44,14 @@ def _generation(con, generation_id: str):
     return row
 
 
+@router.get('/archive-map/assets/large.js')
+def archive_map_large_javascript():
+    path = (BASE / 'static' / 'archive_map_large.js').resolve()
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail='Large-map JavaScript asset was not found.')
+    return FileResponse(path, media_type='application/javascript')
+
+
 @router.get('/archive-map/snapshots/{generation_id}.bin')
 def archive_map_binary(generation_id: str):
     con = _db()
