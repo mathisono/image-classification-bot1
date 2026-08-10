@@ -1,4 +1,5 @@
 import json
+import os
 import re
 from pathlib import Path
 
@@ -10,7 +11,8 @@ from .db import connect
 from .metadata_db import ensure_metadata_schema
 
 BASE = Path(__file__).resolve().parents[1]
-CFG = load_config(str(BASE / 'config.yaml'))
+CFG_PATH = Path(os.environ.get('IMAGE_LIBRARIAN_CONFIG', str(BASE / 'config.yaml'))).expanduser().resolve()
+CFG = load_config(str(CFG_PATH))
 router = APIRouter()
 
 
