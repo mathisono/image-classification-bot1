@@ -54,7 +54,7 @@
 (async () => {
   const response = await fetch('/archive-map/snapshots/{{ selected.generation_id }}.json', {cache:'no-store'});
   const data = await response.json();
-  if (data.format === 'archive-map-v2-binary') return; // handled by /static/archive_map_large.js
+  if (data.format === 'archive-map-v2-binary') return; // handled by /archive-map/assets/large.js
   const svg=document.getElementById('archive-map-svg'), tooltip=document.getElementById('map-tooltip'), search=document.getElementById('map-search'), count=document.getElementById('map-count');
   if(!svg)return;
   const editor=document.getElementById('point-editor'), ns='http://www.w3.org/2000/svg', palette=['#5bc0eb','#fde74c','#9bc53d','#e55934','#fa7921','#a78bfa','#f472b6','#2dd4bf','#60a5fa','#fbbf24','#fb7185','#34d399'];
