@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import time
 from pathlib import Path
 
@@ -67,13 +68,22 @@ def _safe_scan_root(root: dict, con=None) -> int:
                 if stability and time.time() - st.st_mtime < stability:
                     continue
                 rel = str(p.relative_to(root_path))
-                execute(scan_db, """INSERT INTO images(path,root_name,root_path,relative_path,filename,extension,file_size,source_mtime,source_seen_at,status)
+                scan_sql = """INSERT INTO images(path,root_name,root_path,relative_path,filename,extension,file_size,source_mtime,source_seen_at,status)
                     VALUES(?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,'NEW')
                     ON CONFLICT(path) DO UPDATE SET root_name=excluded.root_name,root_path=excluded.root_path,
                     relative_path=excluded.relative_path,filename=excluded.filename,extension=excluded.extension,
                     file_size=excluded.file_size,source_mtime=excluded.source_mtime,source_seen_at=CURRENT_TIMESTAMP,
-                    updated_at=CURRENT_TIMESTAMP""",
-                    (str(p), _root_label(root), str(root_path), rel, p.name, p.suffix.lower(), st.st_size, st.st_mtime))
+                    updated_at=CURRENT_TIMESTAMP"""
+                scan_params = (str(p), _root_label(root), str(root_path), rel, p.name, p.suffix.lower(), st.st_size, st.st_mtime)
+                try:
+                    execute(scan_db, scan_sql, scan_params)
+                except sqlite3.InterfaceError:
+                    # A shared-filesystem scan can outlive a connection that was
+                    # interrupted or invalidated. Reopen once and retry the row.
+                    if con is not None:
+                        scan_db.close()
+                    scan_db = connect(CFG['paths']['database'])
+                    execute(scan_db, scan_sql, scan_params)
                 count += 1
             except (FileNotFoundError, PermissionError):
                 continue
@@ -173,20 +183,23 @@ def process_retry_needed(limit: int = Form(25)):
 
 
 @app.get('/images', response_class=HTMLResponse)
-def images(request: Request, q: str = '', status: str = '', root: str = '', limit: int = 100):
+def images(request: Request, q: str = '', status: str = '', root: str = '', limit: int = 100, db=None):
+    image_db = db or DB
     params = []
     sql = 'SELECT images.* FROM image_fts JOIN images ON image_fts.rowid=images.id WHERE image_fts MATCH ?' if q else 'SELECT * FROM images WHERE 1=1'
     if q:
         params.append(q)
-    if status == 'RETRY_NEEDED':
+    if status == 'FACE_DETECTED':
+        sql += ' AND COALESCE(has_face, face_detected)=1'
+    elif status == 'RETRY_NEEDED':
         sql += " AND (needs_reprocess=1 OR status='NEEDS_REPROCESS')"
     elif status:
         sql += ' AND status=?'; params.append(status)
     if root:
         sql += ' AND root_name=?'; params.append(root)
     sql += ' ORDER BY id DESC LIMIT ?'; params.append(limit)
-    rows = DB.execute(sql, tuple(params)).fetchall()
-    roots = [r['root_name'] for r in DB.execute('SELECT DISTINCT root_name FROM images WHERE root_name IS NOT NULL ORDER BY root_name')]
+    rows = image_db.execute(sql, tuple(params)).fetchall()
+    roots = [r['root_name'] for r in image_db.execute('SELECT DISTINCT root_name FROM images WHERE root_name IS NOT NULL ORDER BY root_name')]
     return templates.TemplateResponse('images.html', {'request': request, 'rows': rows, 'q': q, 'status': status, 'root': root, 'roots': roots})
 
 
