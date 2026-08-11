@@ -3,8 +3,7 @@ import json
 from .config import load_config
 from .db import connect
 from .map_large import run_large_generation
-from . import map_worker_with_metadata as _metadata_patch  # noqa: F401
-from .map_worker import run_generation as run_small_generation
+from .map_worker_with_metadata import run_generation as run_small_generation
 
 
 def run_generation(config_path: str, generation_id: str) -> None:
