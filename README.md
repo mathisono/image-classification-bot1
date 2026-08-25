@@ -268,10 +268,12 @@ Do not start with your full 200,000-image archive on the first run. Test the wor
 
 ---
 
-## Run the GUI
+## Run the service
 
 ```bash
-~/image_librarian/run.sh
+cd ~/image_librarian
+./control.sh start
+./control.sh status
 ```
 
 Open:
@@ -279,6 +281,12 @@ Open:
 ```text
 http://127.0.0.1:8765
 ```
+
+The current deployment runs one web service and three image-processing workers
+as transient services in the user systemd manager. The web service queues work
+in SQLite; the Betty workers perform classification. See
+`OPENCLAW_WORKERS.md` for the exact unit names, environment, process-tree
+behavior, and operational commands.
 
 The GUI has controls to:
 
@@ -314,18 +322,20 @@ Recommended first test:
 
 ## Local vision model setup
 
-The default config is set up for LM Studio with `lmstudio/zai-org/glm-4.6v-flash` loaded:
+The checked-in config is set up for an OpenAI-compatible local endpoint with
+`zai-org/glm-4.6v-flash` loaded:
 
 ```yaml
 vision:
   enabled: true
   base_url: "http://127.0.0.1:1234/v1"
   api_key: "not-needed"
-  model: "lmstudio/zai-org/glm-4.6v-flash"
+  model: "zai-org/glm-4.6v-flash"
   timeout_seconds: 180
-  prompt_version: "image_librarian_identify_beater_v2"
-  structured_output: "pydantic_ai"
-  fallback_to_legacy_json: true
+  max_tokens: 2000
+  prompt_version: "image_librarian_simple_questions_v1"
+  structured_output: "legacy_json"
+  fallback_to_legacy_json: false
 ```
 
 To change it later, edit:
@@ -334,13 +344,18 @@ To change it later, edit:
 nano ~/image_librarian/config.yaml
 ```
 
-This expects an OpenAI-compatible local endpoint. LM Studio can provide this style of local API when `zai-org/glm-4.6v-flash` or another compatible vision model is loaded.
+This expects an OpenAI-compatible local endpoint. LM Studio can provide this
+style of local API when `zai-org/glm-4.6v-flash` or another compatible vision
+model is loaded.
 
 The app sends the resized analysis image, not the original full-resolution file, to the model.
 
 If `structured_output` is `pydantic_ai`, the app asks Pydantic AI to validate the model output against the `ImageClassificationRecord` schema. If that fails and `fallback_to_legacy_json` is true, the app tries the older direct JSON request path before marking the record as retry-needed.
 
-The built-in prompt is tuned to "beat identify": it asks the vision model to add semantic, searchable information that basic file tools cannot provide, instead of repeating dimensions, file format, or other obvious metadata.
+The active prompt asks a short set of factual questions and requests concise
+JSON. It records the main subject, scene and image type, orientation, broad
+category, visible objects and text, and people/face counts without asking the
+model to infer identities.
 
 ---
 
@@ -351,15 +366,15 @@ The classifier now checks for missing or weak database entries before marking an
 - missing caption
 - missing detailed description
 - missing tags
-- missing visible objects/equipment list
-- missing visible text on likely text-heavy images
+- missing scene type
+- missing orientation
 - low model confidence
 - model/JSON/structured-output failure
 
 The app stores a `retry_focus` so the next pass knows what to improve, for example:
 
 ```text
-OCR/read visible text; identify visible objects/equipment; generate searchable tags
+identify scene type; classify orientation; generate searchable tags
 ```
 
 This gives OpenClaw or a future Temporal worker enough information to retry intelligently instead of blindly running the same failing classification over and over.
@@ -452,6 +467,7 @@ image-classification-bot1/
 │   ├── db.py
 │   ├── imaging.py
 │   ├── main.py
+│   ├── worker.py
 │   └── vision.py
 ├── templates/
 │   ├── base.html
@@ -459,6 +475,7 @@ image-classification-bot1/
 │   ├── detail.html
 │   └── images.html
 ├── config.yaml
+├── control.sh
 ├── install_image_librarian.sh
 ├── mount_smb_share.sh
 ├── OPENCLAW_IMAGE_LIBRARIAN_PROMPT.md
@@ -570,7 +587,7 @@ vision:
 Run:
 
 ```bash
-chmod +x install_image_librarian.sh run.sh mount_smb_share.sh
+chmod +x install_image_librarian.sh control.sh run.sh mount_smb_share.sh
 ```
 
 ---

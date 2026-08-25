@@ -1,0 +1,43 @@
+{
+  "case": "printed_photo",
+  "run": 1,
+  "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_printed_photo_person_a.jpg",
+  "expected_count": 1,
+  "expected": [
+    "PERSON_A"
+  ],
+  "processing_time_seconds": 63.748,
+  "http_status": 200,
+  "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"The test image shows a photograph of a person being held, not the person themselves. The visible face in the photograph matches the reference images for PERSON_A in overall facial geometry, including eye shape, nose structure, and hair texture.\"\n ],\n \"conflicting_observations\": [\n \"The test image is a photograph of a photograph, not a direct capture of the person. The reference images are direct captures of the person. This is a fundamental difference in context that prevents a direct biometric match. The test image does not provide a direct facial comparison for biometric verification.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"The model cannot verify identity when the test image is a photograph of a photograph. The model cannot resolve the context of the test image as a proxy for the person's direct appearance.\"\n ]\n}",
+  "json_valid": true,
+  "structure_valid": true,
+  "result": {
+    "face_detection": {
+      "face_present": true,
+      "face_count": 1,
+      "image_quality": "GOOD",
+      "quality_issues": []
+    },
+    "faces": [
+      {
+        "face_index": 0,
+        "location": "center",
+        "classification": "UNKNOWN_PERSON",
+        "matched_identity": "",
+        "confidence": 0.0,
+        "match_margin": "NOT_APPLICABLE",
+        "supporting_observations": [
+          "The test image shows a photograph of a person being held, not the person themselves. The visible face in the photograph matches the reference images for PERSON_A in overall facial geometry, including eye shape, nose structure, and hair texture."
+        ],
+        "conflicting_observations": [
+          "The test image is a photograph of a photograph, not a direct capture of the person. The reference images are direct captures of the person. This is a fundamental difference in context that prevents a direct biometric match. The test image does not provide a direct facial comparison for biometric verification."
+        ],
+        "needs_specialized_face_model": true
+      }
+    ],
+    "overall_result": "REVIEW_REQUIRED",
+    "model_limitations": [
+      "The model cannot verify identity when the test image is a photograph of a photograph. The model cannot resolve the context of the test image as a proxy for the person's direct appearance."
+    ]
+  }
+}

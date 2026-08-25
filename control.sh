@@ -6,12 +6,18 @@ cd "$APP_DIR"
 
 ACTION="${1:-status}"
 CONFIG="${IMAGE_LIBRARIAN_CONFIG:-$APP_DIR/config.yaml}"
-RUN_DIR="${IMAGE_LIBRARIAN_RUN_DIR:-$APP_DIR/data/run}"
-LOG_DIR="${IMAGE_LIBRARIAN_LOG_DIR:-$APP_DIR/data/logs}"
 COORDINATOR_AGENT="${OPENCLAW_COORDINATOR_AGENT:-realtime_mini_voice}"
 VISION_AGENT="${OPENCLAW_VISION_AGENT:-betty}"
+WEB_UNIT="image-librarian-web.service"
+WORKER_UNIT_PREFIX="image-librarian-worker-"
+SYNC_UNIT="image-librarian-db-sync.service"
 
-mkdir -p "$RUN_DIR" "$LOG_DIR"
+command -v systemctl >/dev/null || { echo "systemctl is required" >&2; exit 1; }
+command -v systemd-run >/dev/null || { echo "systemd-run is required" >&2; exit 1; }
+systemctl --user show-environment >/dev/null 2>&1 || {
+  echo "A running user systemd manager is required" >&2
+  exit 1
+}
 
 python_bin() {
   if [ -x "$APP_DIR/.venv/bin/python" ]; then printf '%s\n' "$APP_DIR/.venv/bin/python"; else printf '%s\n' "python3"; fi
@@ -66,38 +72,49 @@ print("All enabled image roots and database-sync paths are accessible.")
 PY
 }
 
-pid_alive() {
-  local pid_file="$1"
-  [ -f "$pid_file" ] || return 1
-  local pid
-  pid="$(cat "$pid_file" 2>/dev/null || true)"
-  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+unit_active() {
+  systemctl --user is-active --quiet "$1"
 }
 
-start_process() {
-  local name="$1"; shift
-  local pid_file="$RUN_DIR/$name.pid"
-  local log_file="$LOG_DIR/$name.log"
-  if pid_alive "$pid_file"; then echo "$name already running (PID $(cat "$pid_file"))"; return; fi
-  rm -f "$pid_file"
-  nohup "$@" >>"$log_file" 2>&1 &
-  echo $! > "$pid_file"
-  sleep 0.2
-  if ! pid_alive "$pid_file"; then echo "ERROR: $name failed to start. See $log_file" >&2; exit 1; fi
-  echo "Started $name (PID $(cat "$pid_file"))"
+unit_loaded() {
+  [ "$(systemctl --user show "$1" --property=LoadState --value 2>/dev/null || true)" = "loaded" ]
 }
 
-stop_process() {
-  local name="$1"
-  local pid_file="$RUN_DIR/$name.pid"
-  if ! pid_alive "$pid_file"; then rm -f "$pid_file"; echo "$name is not running"; return; fi
-  local pid
-  pid="$(cat "$pid_file")"
-  kill "$pid" 2>/dev/null || true
-  for _ in $(seq 1 20); do kill -0 "$pid" 2>/dev/null || break; sleep 0.25; done
-  if kill -0 "$pid" 2>/dev/null; then kill -9 "$pid" 2>/dev/null || true; fi
-  rm -f "$pid_file"
-  echo "Stopped $name"
+list_worker_units() {
+  systemctl --user list-units --all --plain --no-legend \
+    "${WORKER_UNIT_PREFIX}*.service" 2>/dev/null | awk '{print $1}'
+}
+
+start_unit() {
+  local unit="$1"
+  local description="$2"
+  shift 2
+  if unit_active "$unit"; then
+    echo "$unit already running (PID $(systemctl --user show "$unit" --property=MainPID --value))"
+    return
+  fi
+  systemctl --user reset-failed "$unit" 2>/dev/null || true
+  systemd-run --user --quiet --collect \
+    --unit="$unit" \
+    --description="$description" \
+    --property="WorkingDirectory=$APP_DIR" \
+    --property="Restart=no" \
+    "$@"
+  if ! unit_active "$unit"; then
+    echo "ERROR: $unit failed to start. Check: journalctl --user -u $unit -n 100" >&2
+    exit 1
+  fi
+  echo "Started $unit (PID $(systemctl --user show "$unit" --property=MainPID --value))"
+}
+
+stop_unit() {
+  local unit="$1"
+  if ! unit_loaded "$unit"; then
+    echo "$unit is not running"
+    return
+  fi
+  systemctl --user stop "$unit"
+  echo "Stopped $unit"
 }
 
 sync_enabled() {
@@ -121,53 +138,90 @@ start_all() {
     "$PYTHON" -m app.db_sync --config "$CONFIG" --restore-if-missing
   fi
 
-  start_process web_ui env IMAGE_LIBRARIAN_CONFIG="$CONFIG" \
+  start_unit "$WEB_UNIT" "Image Librarian web UI" \
+    --setenv="IMAGE_LIBRARIAN_CONFIG=$CONFIG" \
     "$PYTHON" -m uvicorn app.main:app --host "$host" --port "$port"
 
   for i in $(seq 1 "$count"); do
     local worker="betty_image_worker_$i"
-    start_process "$worker" env \
-      IMAGE_LIBRARIAN_CONFIG="$CONFIG" \
-      OPENCLAW_COORDINATOR_AGENT="$COORDINATOR_AGENT" \
-      OPENCLAW_VISION_AGENT="$VISION_AGENT" \
-      OPENCLAW_AGENT_NAME="$VISION_AGENT" \
+    start_unit "${WORKER_UNIT_PREFIX}${i}.service" "Image Librarian worker $i" \
+      --setenv="IMAGE_LIBRARIAN_CONFIG=$CONFIG" \
+      --setenv="OPENCLAW_COORDINATOR_AGENT=$COORDINATOR_AGENT" \
+      --setenv="OPENCLAW_VISION_AGENT=$VISION_AGENT" \
+      --setenv="OPENCLAW_AGENT_NAME=$VISION_AGENT" \
       "$PYTHON" -m app.worker --config "$CONFIG" \
       --agent-name "$VISION_AGENT" --worker-id "$worker"
   done
 
+  local unit index
+  while IFS= read -r unit; do
+    [ -n "$unit" ] || continue
+    index="${unit#"$WORKER_UNIT_PREFIX"}"
+    index="${index%.service}"
+    if [[ "$index" =~ ^[0-9]+$ ]] && [ "$index" -gt "$count" ]; then
+      stop_unit "$unit"
+    fi
+  done < <(list_worker_units)
+
   if sync_enabled; then
-    start_process db_sync env IMAGE_LIBRARIAN_CONFIG="$CONFIG" \
+    start_unit "$SYNC_UNIT" "Image Librarian database sync" \
+      --setenv="IMAGE_LIBRARIAN_CONFIG=$CONFIG" \
       "$PYTHON" -m app.db_sync --config "$CONFIG"
   fi
 
   echo "Web UI: http://$host:$port"
   echo "Coordinator: $COORDINATOR_AGENT | Vision agent: $VISION_AGENT | Workers: $count"
-  sync_enabled && echo "Database sync: enabled (live DB local; consistent snapshots copied to Windows share)"
+  if sync_enabled; then
+    echo "Database sync: enabled (live DB local; consistent snapshots copied to Windows share)"
+  fi
 }
 
 stop_all() {
-  for pid_file in "$RUN_DIR"/betty_image_worker_*.pid; do
-    [ -e "$pid_file" ] || continue
-    stop_process "$(basename "$pid_file" .pid)"
-  done
+  local unit
+  while IFS= read -r unit; do
+    [ -n "$unit" ] || continue
+    stop_unit "$unit"
+  done < <(list_worker_units)
+  if unit_loaded "$SYNC_UNIT"; then
+    stop_unit "$SYNC_UNIT"
+  fi
+  if unit_loaded "$WEB_UNIT"; then
+    stop_unit "$WEB_UNIT"
+  else
+    echo "$WEB_UNIT is not running"
+  fi
   if sync_enabled; then
-    stop_process db_sync
     sync_now || echo "WARNING: final database sync failed" >&2
   fi
-  stop_process web_ui
 }
 
 status_all() {
+  local unit state pid description
   local found=0
-  for pid_file in "$RUN_DIR"/*.pid; do
-    [ -e "$pid_file" ] || continue
+  for unit in "$WEB_UNIT" $(list_worker_units) "$SYNC_UNIT"; do
+    unit_loaded "$unit" || continue
     found=1
-    local name
-    name="$(basename "$pid_file" .pid)"
-    if pid_alive "$pid_file"; then echo "$name: running (PID $(cat "$pid_file"))"; else echo "$name: stale PID file"; fi
+    state="$(systemctl --user show "$unit" --property=ActiveState --value)"
+    pid="$(systemctl --user show "$unit" --property=MainPID --value)"
+    description="$(systemctl --user show "$unit" --property=Description --value)"
+    echo "$unit: $state (PID $pid) - $description"
   done
   [ "$found" -eq 1 ] || echo "Image Librarian is stopped"
   if sync_enabled; then echo "database_sync: enabled -> $(read_config_value database_sync.share_copy)"; fi
+}
+
+logs_all() {
+  local unit
+  local -a journal_args=()
+  for unit in "$WEB_UNIT" $(list_worker_units) "$SYNC_UNIT"; do
+    unit_loaded "$unit" || continue
+    journal_args+=(--unit="$unit")
+  done
+  if [ "${#journal_args[@]}" -eq 0 ]; then
+    echo "Image Librarian has no loaded systemd units" >&2
+    exit 1
+  fi
+  journalctl --user --no-pager -n 100 --follow "${journal_args[@]}"
 }
 
 case "$ACTION" in
@@ -177,6 +231,6 @@ case "$ACTION" in
   status) status_all ;;
   check-share) check_roots ;;
   sync-now) sync_now ;;
-  logs) tail -n 100 -F "$LOG_DIR"/*.log ;;
+  logs) logs_all ;;
   *) echo "Usage: $0 {start|stop|restart|status|check-share|sync-now|logs}" >&2; exit 2 ;;
 esac

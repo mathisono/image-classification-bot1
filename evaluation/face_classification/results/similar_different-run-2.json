@@ -1,0 +1,44 @@
+{
+  "case": "similar_different",
+  "run": 2,
+  "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_similar_person_b.jpg",
+  "expected_count": 1,
+  "expected": [
+    "UNKNOWN_PERSON"
+  ],
+  "processing_time_seconds": 44.316,
+  "http_status": 200,
+  "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"MATCHED_IDENTITY\",\n \"matched_identity\": \"PERSON_A\",\n \"confidence\": 0.95,\n \"match_margin\": \"CLEAR\",\n \"supporting_observations\": [\n \"Similar facial geometry including forehead shape, nose bridge, and jawline.\",\n \"Consistent dark, curly hair texture and distribution.\",\n \"Similar eye shape, color, and spacing.\",\n \"Consistent facial hair pattern and skin tone.\"\n ],\n \"conflicting_observations\": [],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"PASS\",\n \"model_limitations\": [\n \"This evaluation is based on visual comparison only and does not constitute biometric verification.\"\n ]\n}",
+  "json_valid": true,
+  "structure_valid": true,
+  "result": {
+    "face_detection": {
+      "face_present": true,
+      "face_count": 1,
+      "image_quality": "GOOD",
+      "quality_issues": []
+    },
+    "faces": [
+      {
+        "face_index": 0,
+        "location": "center",
+        "classification": "MATCHED_IDENTITY",
+        "matched_identity": "PERSON_A",
+        "confidence": 0.95,
+        "match_margin": "CLEAR",
+        "supporting_observations": [
+          "Similar facial geometry including forehead shape, nose bridge, and jawline.",
+          "Consistent dark, curly hair texture and distribution.",
+          "Similar eye shape, color, and spacing.",
+          "Consistent facial hair pattern and skin tone."
+        ],
+        "conflicting_observations": [],
+        "needs_specialized_face_model": true
+      }
+    ],
+    "overall_result": "PASS",
+    "model_limitations": [
+      "This evaluation is based on visual comparison only and does not constitute biometric verification."
+    ]
+  }
+}

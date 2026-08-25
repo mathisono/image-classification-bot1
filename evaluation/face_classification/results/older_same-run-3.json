@@ -1,0 +1,44 @@
+{
+  "case": "older_same",
+  "run": 3,
+  "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_older_person_a.jpg",
+  "expected_count": 1,
+  "expected": [
+    "PERSON_A"
+  ],
+  "processing_time_seconds": 40.964,
+  "http_status": 200,
+  "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"MATCHED_IDENTITY\",\n \"matched_identity\": \"PERSON_A\",\n \"confidence\": 0.95,\n \"match_margin\": \"CLEAR\",\n \"supporting_observations\": [\n \"Similar facial geometry including forehead shape, nose bridge, and jawline.\",\n \"Consistent dark, curly hair texture and distribution.\",\n \"Similar eye shape, color, and position relative to face.\",\n \"Visible mole on left cheek consistent across all reference images.\"\n ],\n \"conflicting_observations\": [],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"PASS\",\n \"model_limitations\": [\n \"General vision-language model used for initial comparison; final biometric confirmation required.\"\n ]\n}",
+  "json_valid": true,
+  "structure_valid": true,
+  "result": {
+    "face_detection": {
+      "face_present": true,
+      "face_count": 1,
+      "image_quality": "GOOD",
+      "quality_issues": []
+    },
+    "faces": [
+      {
+        "face_index": 0,
+        "location": "center",
+        "classification": "MATCHED_IDENTITY",
+        "matched_identity": "PERSON_A",
+        "confidence": 0.95,
+        "match_margin": "CLEAR",
+        "supporting_observations": [
+          "Similar facial geometry including forehead shape, nose bridge, and jawline.",
+          "Consistent dark, curly hair texture and distribution.",
+          "Similar eye shape, color, and position relative to face.",
+          "Visible mole on left cheek consistent across all reference images."
+        ],
+        "conflicting_observations": [],
+        "needs_specialized_face_model": true
+      }
+    ],
+    "overall_result": "PASS",
+    "model_limitations": [
+      "General vision-language model used for initial comparison; final biometric confirmation required."
+    ]
+  }
+}

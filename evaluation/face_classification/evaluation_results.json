@@ -1,0 +1,1219 @@
+{
+  "generated_at": "2026-08-04T21:07:43.819696+00:00",
+  "endpoint": "http://192.168.3.38:1234/v1",
+  "model": "qwen/qwen3-vl-8b",
+  "reference_identity": "PERSON_A",
+  "reference_images": [
+    "/home/bill/image_librarian/evaluation/face_classification/images_512/person_a_ref_frontal.jpg",
+    "/home/bill/image_librarian/evaluation/face_classification/images_512/person_a_ref_angle.jpg",
+    "/home/bill/image_librarian/evaluation/face_classification/images_512/person_a_ref_lighting_glasses.jpg"
+  ],
+  "runs_per_case": 3,
+  "records": [
+    {
+      "case": "clear_same",
+      "run": 1,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_clear_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "PERSON_A"
+      ],
+      "processing_time_seconds": 71.294,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"MATCHED_IDENTITY\",\n \"matched_identity\": \"PERSON_A\",\n \"confidence\": 0.95,\n \"match_margin\": \"CLEAR\",\n \"supporting_observations\": [\n \"Similar dark, curly hair texture and volume\",\n \"Similar eye shape, color, and position\",\n \"Similar facial structure and jawline\",\n \"Similar skin tone and visible facial hair pattern\"\n ],\n \"conflicting_observations\": [],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"PASS\",\n \"model_limitations\": [\n \"General vision-language model used for initial comparison; final biometric confirmation required\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "MATCHED_IDENTITY",
+            "matched_identity": "PERSON_A",
+            "confidence": 0.95,
+            "match_margin": "CLEAR",
+            "supporting_observations": [
+              "Similar dark, curly hair texture and volume",
+              "Similar eye shape, color, and position",
+              "Similar facial structure and jawline",
+              "Similar skin tone and visible facial hair pattern"
+            ],
+            "conflicting_observations": [],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "PASS",
+        "model_limitations": [
+          "General vision-language model used for initial comparison; final biometric confirmation required"
+        ]
+      }
+    },
+    {
+      "case": "clear_same",
+      "run": 2,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_clear_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "PERSON_A"
+      ],
+      "processing_time_seconds": 47.281,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"The test face has similar overall facial geometry, including eye shape, nose bridge, and jawline, to the reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test face lacks glasses, which are present in one reference image. The expression and lighting conditions differ slightly. The background color is different. These variations, while minor, are sufficient to prevent a confident match under biometric standards.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"This model cannot make final biometric identity decisions. It requires specialized face recognition models for confirmation.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "The test face has similar overall facial geometry, including eye shape, nose bridge, and jawline, to the reference images for PERSON_A."
+            ],
+            "conflicting_observations": [
+              "The test face lacks glasses, which are present in one reference image. The expression and lighting conditions differ slightly. The background color is different. These variations, while minor, are sufficient to prevent a confident match under biometric standards."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "This model cannot make final biometric identity decisions. It requires specialized face recognition models for confirmation."
+        ]
+      }
+    },
+    {
+      "case": "clear_same",
+      "run": 3,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_clear_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "PERSON_A"
+      ],
+      "processing_time_seconds": 47.085,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"The test face has similar overall facial geometry, including eye shape, nose bridge, and jawline, to the reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test face lacks glasses, which are present in one reference image. The expression and lighting conditions differ slightly. The background color is different. These variations, while minor, are sufficient to prevent a confident match under biometric standards.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"This model cannot make final biometric identity decisions. It requires specialized face recognition models for confirmation.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "The test face has similar overall facial geometry, including eye shape, nose bridge, and jawline, to the reference images for PERSON_A."
+            ],
+            "conflicting_observations": [
+              "The test face lacks glasses, which are present in one reference image. The expression and lighting conditions differ slightly. The background color is different. These variations, while minor, are sufficient to prevent a confident match under biometric standards."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "This model cannot make final biometric identity decisions. It requires specialized face recognition models for confirmation."
+        ]
+      }
+    },
+    {
+      "case": "angle_lighting_same",
+      "run": 1,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_angle_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "PERSON_A"
+      ],
+      "processing_time_seconds": 53.474,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry including dark curly hair, eye shape, and facial structure are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows the person in profile view with a different expression and background, while reference images are frontal. The test image lacks glasses, which is present in one reference image. Lighting and pose differences are significant.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"General vision-language model cannot make final biometric decisions. Differences in pose, expression, and lighting require specialized face recognition model confirmation.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "Visible facial geometry including dark curly hair, eye shape, and facial structure are consistent with reference images for PERSON_A."
+            ],
+            "conflicting_observations": [
+              "The test image shows the person in profile view with a different expression and background, while reference images are frontal. The test image lacks glasses, which is present in one reference image. Lighting and pose differences are significant."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "General vision-language model cannot make final biometric decisions. Differences in pose, expression, and lighting require specialized face recognition model confirmation."
+        ]
+      }
+    },
+    {
+      "case": "angle_lighting_same",
+      "run": 2,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_angle_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "PERSON_A"
+      ],
+      "processing_time_seconds": 46.605,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry including dark curly hair, eye shape, and facial structure are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows the person in profile view with a different expression and background, while reference images show frontal views. The test image lacks glasses, which is present in one reference image. Lighting and pose differences are significant.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"General vision-language model cannot make final biometric decisions. Differences in pose, expression, and lighting require specialized face recognition model confirmation.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "Visible facial geometry including dark curly hair, eye shape, and facial structure are consistent with reference images for PERSON_A."
+            ],
+            "conflicting_observations": [
+              "The test image shows the person in profile view with a different expression and background, while reference images show frontal views. The test image lacks glasses, which is present in one reference image. Lighting and pose differences are significant."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "General vision-language model cannot make final biometric decisions. Differences in pose, expression, and lighting require specialized face recognition model confirmation."
+        ]
+      }
+    },
+    {
+      "case": "angle_lighting_same",
+      "run": 3,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_angle_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "PERSON_A"
+      ],
+      "processing_time_seconds": 46.867,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry including dark curly hair, eye shape, and facial structure are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows the person in profile view with a different expression and background, while reference images show frontal views. The test image lacks glasses, which is present in one reference image. Lighting and pose differences are significant.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"General vision-language model cannot make final biometric decisions. Differences in pose, expression, and lighting require specialized face recognition model confirmation.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "Visible facial geometry including dark curly hair, eye shape, and facial structure are consistent with reference images for PERSON_A."
+            ],
+            "conflicting_observations": [
+              "The test image shows the person in profile view with a different expression and background, while reference images show frontal views. The test image lacks glasses, which is present in one reference image. Lighting and pose differences are significant."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "General vision-language model cannot make final biometric decisions. Differences in pose, expression, and lighting require specialized face recognition model confirmation."
+        ]
+      }
+    },
+    {
+      "case": "older_same",
+      "run": 1,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_older_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "PERSON_A"
+      ],
+      "processing_time_seconds": 50.487,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"MATCHED_IDENTITY\",\n \"matched_identity\": \"PERSON_A\",\n \"confidence\": 0.95,\n \"match_margin\": \"CLEAR\",\n \"supporting_observations\": [\n \"Similar facial geometry including forehead shape, nose bridge, and jawline.\",\n \"Consistent dark, curly hair texture and distribution.\",\n \"Similar eye shape, color, and spacing.\",\n \"Presence of a small mole on the left cheek (viewer's right).\",\n \"Similar facial hair pattern and skin tone.\"\n ],\n \"conflicting_observations\": [],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"PASS\",\n \"model_limitations\": [\n \"General vision-language model used for initial comparison; final biometric confirmation required.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "MATCHED_IDENTITY",
+            "matched_identity": "PERSON_A",
+            "confidence": 0.95,
+            "match_margin": "CLEAR",
+            "supporting_observations": [
+              "Similar facial geometry including forehead shape, nose bridge, and jawline.",
+              "Consistent dark, curly hair texture and distribution.",
+              "Similar eye shape, color, and spacing.",
+              "Presence of a small mole on the left cheek (viewer's right).",
+              "Similar facial hair pattern and skin tone."
+            ],
+            "conflicting_observations": [],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "PASS",
+        "model_limitations": [
+          "General vision-language model used for initial comparison; final biometric confirmation required."
+        ]
+      }
+    },
+    {
+      "case": "older_same",
+      "run": 2,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_older_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "PERSON_A"
+      ],
+      "processing_time_seconds": 40.44,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"MATCHED_IDENTITY\",\n \"matched_identity\": \"PERSON_A\",\n \"confidence\": 0.95,\n \"match_margin\": \"CLEAR\",\n \"supporting_observations\": [\n \"Similar facial geometry including forehead shape, nose bridge, and jawline.\",\n \"Consistent dark, curly hair texture and distribution.\",\n \"Similar eye shape, color, and position relative to face.\",\n \"Visible mole on left cheek consistent across all reference images.\"\n ],\n \"conflicting_observations\": [],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"PASS\",\n \"model_limitations\": [\n \"General vision-language model used for initial comparison; final biometric confirmation required.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "MATCHED_IDENTITY",
+            "matched_identity": "PERSON_A",
+            "confidence": 0.95,
+            "match_margin": "CLEAR",
+            "supporting_observations": [
+              "Similar facial geometry including forehead shape, nose bridge, and jawline.",
+              "Consistent dark, curly hair texture and distribution.",
+              "Similar eye shape, color, and position relative to face.",
+              "Visible mole on left cheek consistent across all reference images."
+            ],
+            "conflicting_observations": [],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "PASS",
+        "model_limitations": [
+          "General vision-language model used for initial comparison; final biometric confirmation required."
+        ]
+      }
+    },
+    {
+      "case": "older_same",
+      "run": 3,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_older_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "PERSON_A"
+      ],
+      "processing_time_seconds": 40.964,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"MATCHED_IDENTITY\",\n \"matched_identity\": \"PERSON_A\",\n \"confidence\": 0.95,\n \"match_margin\": \"CLEAR\",\n \"supporting_observations\": [\n \"Similar facial geometry including forehead shape, nose bridge, and jawline.\",\n \"Consistent dark, curly hair texture and distribution.\",\n \"Similar eye shape, color, and position relative to face.\",\n \"Visible mole on left cheek consistent across all reference images.\"\n ],\n \"conflicting_observations\": [],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"PASS\",\n \"model_limitations\": [\n \"General vision-language model used for initial comparison; final biometric confirmation required.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "MATCHED_IDENTITY",
+            "matched_identity": "PERSON_A",
+            "confidence": 0.95,
+            "match_margin": "CLEAR",
+            "supporting_observations": [
+              "Similar facial geometry including forehead shape, nose bridge, and jawline.",
+              "Consistent dark, curly hair texture and distribution.",
+              "Similar eye shape, color, and position relative to face.",
+              "Visible mole on left cheek consistent across all reference images."
+            ],
+            "conflicting_observations": [],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "PASS",
+        "model_limitations": [
+          "General vision-language model used for initial comparison; final biometric confirmation required."
+        ]
+      }
+    },
+    {
+      "case": "similar_different",
+      "run": 1,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_similar_person_b.jpg",
+      "expected_count": 1,
+      "expected": [
+        "UNKNOWN_PERSON"
+      ],
+      "processing_time_seconds": 47.986,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"MATCHED_IDENTITY\",\n \"matched_identity\": \"PERSON_A\",\n \"confidence\": 0.95,\n \"match_margin\": \"CLEAR\",\n \"supporting_observations\": [\n \"Similar facial geometry including forehead shape, nose bridge, and jawline.\",\n \"Consistent dark, curly hair texture and distribution.\",\n \"Similar eye shape, color, and spacing.\",\n \"Consistent facial structure and skin tone.\"\n ],\n \"conflicting_observations\": [],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"PASS\",\n \"model_limitations\": [\n \"This evaluation is based on visual comparison only and does not constitute biometric verification.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "MATCHED_IDENTITY",
+            "matched_identity": "PERSON_A",
+            "confidence": 0.95,
+            "match_margin": "CLEAR",
+            "supporting_observations": [
+              "Similar facial geometry including forehead shape, nose bridge, and jawline.",
+              "Consistent dark, curly hair texture and distribution.",
+              "Similar eye shape, color, and spacing.",
+              "Consistent facial structure and skin tone."
+            ],
+            "conflicting_observations": [],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "PASS",
+        "model_limitations": [
+          "This evaluation is based on visual comparison only and does not constitute biometric verification."
+        ]
+      }
+    },
+    {
+      "case": "similar_different",
+      "run": 2,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_similar_person_b.jpg",
+      "expected_count": 1,
+      "expected": [
+        "UNKNOWN_PERSON"
+      ],
+      "processing_time_seconds": 44.316,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"MATCHED_IDENTITY\",\n \"matched_identity\": \"PERSON_A\",\n \"confidence\": 0.95,\n \"match_margin\": \"CLEAR\",\n \"supporting_observations\": [\n \"Similar facial geometry including forehead shape, nose bridge, and jawline.\",\n \"Consistent dark, curly hair texture and distribution.\",\n \"Similar eye shape, color, and spacing.\",\n \"Consistent facial hair pattern and skin tone.\"\n ],\n \"conflicting_observations\": [],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"PASS\",\n \"model_limitations\": [\n \"This evaluation is based on visual comparison only and does not constitute biometric verification.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "MATCHED_IDENTITY",
+            "matched_identity": "PERSON_A",
+            "confidence": 0.95,
+            "match_margin": "CLEAR",
+            "supporting_observations": [
+              "Similar facial geometry including forehead shape, nose bridge, and jawline.",
+              "Consistent dark, curly hair texture and distribution.",
+              "Similar eye shape, color, and spacing.",
+              "Consistent facial hair pattern and skin tone."
+            ],
+            "conflicting_observations": [],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "PASS",
+        "model_limitations": [
+          "This evaluation is based on visual comparison only and does not constitute biometric verification."
+        ]
+      }
+    },
+    {
+      "case": "similar_different",
+      "run": 3,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_similar_person_b.jpg",
+      "expected_count": 1,
+      "expected": [
+        "UNKNOWN_PERSON"
+      ],
+      "processing_time_seconds": 43.679,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"MATCHED_IDENTITY\",\n \"matched_identity\": \"PERSON_A\",\n \"confidence\": 0.95,\n \"match_margin\": \"CLEAR\",\n \"supporting_observations\": [\n \"Similar facial geometry including forehead shape, nose bridge, and jawline.\",\n \"Consistent dark, curly hair texture and distribution.\",\n \"Similar eye shape, color, and spacing.\",\n \"Consistent facial hair pattern and skin tone.\"\n ],\n \"conflicting_observations\": [],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"PASS\",\n \"model_limitations\": [\n \"This evaluation is based on visual comparison only and does not constitute biometric verification.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "MATCHED_IDENTITY",
+            "matched_identity": "PERSON_A",
+            "confidence": 0.95,
+            "match_margin": "CLEAR",
+            "supporting_observations": [
+              "Similar facial geometry including forehead shape, nose bridge, and jawline.",
+              "Consistent dark, curly hair texture and distribution.",
+              "Similar eye shape, color, and spacing.",
+              "Consistent facial hair pattern and skin tone."
+            ],
+            "conflicting_observations": [],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "PASS",
+        "model_limitations": [
+          "This evaluation is based on visual comparison only and does not constitute biometric verification."
+        ]
+      }
+    },
+    {
+      "case": "multiple_faces",
+      "run": 1,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_multiple_a_and_b.jpg",
+      "expected_count": 2,
+      "expected": [
+        "PERSON_A",
+        "UNKNOWN_PERSON"
+      ],
+      "processing_time_seconds": 120.083,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 2,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"left\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry and features are consistent with reference images for PERSON_A, including dark curly hair, eye shape, and facial structure.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows two individuals, but the left individual's face is not clearly distinguishable from the right individual's face due to similar appearance and lack of unique distinguishing features in this context. The reference images for PERSON_A do not include a side-by-side comparison with another person, and the test image does not provide sufficient evidence to confirm if the left individual is the same person as the right individual or if they are two separate individuals. The system cannot confirm identity without clear distinction.\"\n ],\n \"needs_specialized_face_model\": true\n },\n {\n \"face_index\": 1,\n \"location\": \"right\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry and features are consistent with reference images for PERSON_A, including dark curly hair, eye shape, and facial structure.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows two individuals, but the right individual's face is not clearly distinguishable from the left individual's face due to similar appearance and lack of unique distinguishing features in this context. The reference images for PERSON_A do not include a side-by-side comparison with another person, and the test image does not provide sufficient evidence to confirm if the right individual is the same person as the left individual or if they are two separate individuals. The system cannot confirm identity without clear distinction.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"The model cannot distinguish between two individuals with identical or very similar facial features without additional context or biometric-model confirmation. The system cannot confirm identity without clear distinction between the two individuals in the test image.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 2,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "left",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "Visible facial geometry and features are consistent with reference images for PERSON_A, including dark curly hair, eye shape, and facial structure."
+            ],
+            "conflicting_observations": [
+              "The test image shows two individuals, but the left individual's face is not clearly distinguishable from the right individual's face due to similar appearance and lack of unique distinguishing features in this context. The reference images for PERSON_A do not include a side-by-side comparison with another person, and the test image does not provide sufficient evidence to confirm if the left individual is the same person as the right individual or if they are two separate individuals. The system cannot confirm identity without clear distinction."
+            ],
+            "needs_specialized_face_model": true
+          },
+          {
+            "face_index": 1,
+            "location": "right",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "Visible facial geometry and features are consistent with reference images for PERSON_A, including dark curly hair, eye shape, and facial structure."
+            ],
+            "conflicting_observations": [
+              "The test image shows two individuals, but the right individual's face is not clearly distinguishable from the left individual's face due to similar appearance and lack of unique distinguishing features in this context. The reference images for PERSON_A do not include a side-by-side comparison with another person, and the test image does not provide sufficient evidence to confirm if the right individual is the same person as the left individual or if they are two separate individuals. The system cannot confirm identity without clear distinction."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "The model cannot distinguish between two individuals with identical or very similar facial features without additional context or biometric-model confirmation. The system cannot confirm identity without clear distinction between the two individuals in the test image."
+        ]
+      }
+    },
+    {
+      "case": "multiple_faces",
+      "run": 2,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_multiple_a_and_b.jpg",
+      "expected_count": 2,
+      "expected": [
+        "PERSON_A",
+        "UNKNOWN_PERSON"
+      ],
+      "processing_time_seconds": 94.362,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 2,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"left\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry and features are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows two individuals, but the left individual's pose and expression differ from the reference images. The reference images show a neutral expression with direct gaze, while the test image shows a slightly different head tilt and expression. The lighting and background are also different.\"\n ],\n \"needs_specialized_face_model\": true\n },\n {\n \"face_index\": 1,\n \"location\": \"right\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry and features are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows two individuals, but the right individual's pose and expression differ from the reference images. The reference images show a neutral expression with direct gaze, while the test image shows a slightly different head tilt and expression. The lighting and background are also different.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"The model cannot confirm identity without biometric-model confirmation. The test image contains two individuals, but the system is designed to classify each face independently. The reference images are for a single identity (PERSON_A), but the test image shows two individuals who may or may not be the same person. The model cannot determine if the two individuals in the test image are the same person as the reference images without additional context.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 2,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "left",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "Visible facial geometry and features are consistent with reference images for PERSON_A."
+            ],
+            "conflicting_observations": [
+              "The test image shows two individuals, but the left individual's pose and expression differ from the reference images. The reference images show a neutral expression with direct gaze, while the test image shows a slightly different head tilt and expression. The lighting and background are also different."
+            ],
+            "needs_specialized_face_model": true
+          },
+          {
+            "face_index": 1,
+            "location": "right",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "Visible facial geometry and features are consistent with reference images for PERSON_A."
+            ],
+            "conflicting_observations": [
+              "The test image shows two individuals, but the right individual's pose and expression differ from the reference images. The reference images show a neutral expression with direct gaze, while the test image shows a slightly different head tilt and expression. The lighting and background are also different."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "The model cannot confirm identity without biometric-model confirmation. The test image contains two individuals, but the system is designed to classify each face independently. The reference images are for a single identity (PERSON_A), but the test image shows two individuals who may or may not be the same person. The model cannot determine if the two individuals in the test image are the same person as the reference images without additional context."
+        ]
+      }
+    },
+    {
+      "case": "multiple_faces",
+      "run": 3,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_multiple_a_and_b.jpg",
+      "expected_count": 2,
+      "expected": [
+        "PERSON_A",
+        "UNKNOWN_PERSON"
+      ],
+      "processing_time_seconds": 88.83,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 2,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"left\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry and features are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows two individuals, but the left individual's pose and expression differ from the reference images. The reference images show a neutral expression with direct gaze, while the test image shows a slightly different head tilt and expression. The lighting and background are also different.\"\n ],\n \"needs_specialized_face_model\": true\n },\n {\n \"face_index\": 1,\n \"location\": \"right\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry and features are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows two individuals, but the right individual's pose and expression differ from the reference images. The reference images show a neutral expression with direct gaze, while the test image shows a slightly different head tilt and expression. The lighting and background are also different.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"The model cannot confirm identity without biometric-model confirmation. The test image contains two individuals, but the system is designed to classify each face independently. The reference images are for a single identity (PERSON_A), but the test image shows two individuals who may or may not be the same person. The model cannot determine if the two individuals in the test image are the same person as the reference images without additional context.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 2,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "left",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "Visible facial geometry and features are consistent with reference images for PERSON_A."
+            ],
+            "conflicting_observations": [
+              "The test image shows two individuals, but the left individual's pose and expression differ from the reference images. The reference images show a neutral expression with direct gaze, while the test image shows a slightly different head tilt and expression. The lighting and background are also different."
+            ],
+            "needs_specialized_face_model": true
+          },
+          {
+            "face_index": 1,
+            "location": "right",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "Visible facial geometry and features are consistent with reference images for PERSON_A."
+            ],
+            "conflicting_observations": [
+              "The test image shows two individuals, but the right individual's pose and expression differ from the reference images. The reference images show a neutral expression with direct gaze, while the test image shows a slightly different head tilt and expression. The lighting and background are also different."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "The model cannot confirm identity without biometric-model confirmation. The test image contains two individuals, but the system is designed to classify each face independently. The reference images are for a single identity (PERSON_A), but the test image shows two individuals who may or may not be the same person. The model cannot determine if the two individuals in the test image are the same person as the reference images without additional context."
+        ]
+      }
+    },
+    {
+      "case": "small_distant",
+      "run": 1,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_small_distant_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "processing_time_seconds": 58.851,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.78,\n \"match_margin\": \"NARROW\",\n \"supporting_observations\": [\n \"Visible facial geometry including dark curly hair, facial structure, and eye shape are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows the person outdoors with different lighting, pose, and clothing (jeans and white shoes) compared to the indoor reference images. The reference images show a dark t-shirt and no visible glasses, while the test image does not show glasses. The expression is neutral in the test image versus a slight smile in the references.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"The model cannot confirm identity without biometric-model confirmation due to pose, lighting, and expression differences. Confidence is above 0.75 but not exceptionally clear.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.78,
+            "match_margin": "NARROW",
+            "supporting_observations": [
+              "Visible facial geometry including dark curly hair, facial structure, and eye shape are consistent with reference images for PERSON_A."
+            ],
+            "conflicting_observations": [
+              "The test image shows the person outdoors with different lighting, pose, and clothing (jeans and white shoes) compared to the indoor reference images. The reference images show a dark t-shirt and no visible glasses, while the test image does not show glasses. The expression is neutral in the test image versus a slight smile in the references."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "The model cannot confirm identity without biometric-model confirmation due to pose, lighting, and expression differences. Confidence is above 0.75 but not exceptionally clear."
+        ]
+      }
+    },
+    {
+      "case": "small_distant",
+      "run": 2,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_small_distant_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "processing_time_seconds": 48.644,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.78,\n \"match_margin\": \"NARROW\",\n \"supporting_observations\": [\n \"Visible facial geometry including dark curly hair, facial structure, and eye shape are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows the person outdoors with different lighting, pose, and expression compared to the reference images. The reference images show a neutral or smiling expression with glasses in one, while the test image shows a neutral expression without glasses. The background and scale are different.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"The model cannot confirm identity without biometric-model confirmation. The match is based on visible features but is affected by pose, lighting, and expression differences.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.78,
+            "match_margin": "NARROW",
+            "supporting_observations": [
+              "Visible facial geometry including dark curly hair, facial structure, and eye shape are consistent with reference images for PERSON_A."
+            ],
+            "conflicting_observations": [
+              "The test image shows the person outdoors with different lighting, pose, and expression compared to the reference images. The reference images show a neutral or smiling expression with glasses in one, while the test image shows a neutral expression without glasses. The background and scale are different."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "The model cannot confirm identity without biometric-model confirmation. The match is based on visible features but is affected by pose, lighting, and expression differences."
+        ]
+      }
+    },
+    {
+      "case": "small_distant",
+      "run": 3,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_small_distant_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "processing_time_seconds": 49.179,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.78,\n \"match_margin\": \"NARROW\",\n \"supporting_observations\": [\n \"Visible facial geometry including dark curly hair, facial structure, and eye shape are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows the person outdoors with different lighting, pose, and expression compared to the reference images. The reference images show a neutral or smiling expression with glasses in one, while the test image shows a neutral expression without glasses. The background and scale are different.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"The model cannot confirm identity without biometric-model confirmation. The match is based on visible features but is affected by pose, lighting, and expression differences.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.78,
+            "match_margin": "NARROW",
+            "supporting_observations": [
+              "Visible facial geometry including dark curly hair, facial structure, and eye shape are consistent with reference images for PERSON_A."
+            ],
+            "conflicting_observations": [
+              "The test image shows the person outdoors with different lighting, pose, and expression compared to the reference images. The reference images show a neutral or smiling expression with glasses in one, while the test image shows a neutral expression without glasses. The background and scale are different."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "The model cannot confirm identity without biometric-model confirmation. The match is based on visible features but is affected by pose, lighting, and expression differences."
+        ]
+      }
+    },
+    {
+      "case": "blurry_obstructed",
+      "run": 1,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_blurry_obstructed_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "processing_time_seconds": 64.92,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"POOR\",\n \"quality_issues\": [\n \"Low resolution\",\n \"Blurry features\",\n \"Hand partially obscuring face\",\n \"Poor lighting and contrast\"\n ]\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"INSUFFICIENT_EVIDENCE\",\n \"matched_identity\": \"\",\n \"confidence\": 0.55,\n \"match_margin\": \"NARROW\",\n \"supporting_observations\": [\n \"Visible dark, curly hair consistent with reference images\",\n \"Eye shape and brow ridge appear similar\",\n \"Skin tone and facial structure partially consistent\"\n ],\n \"conflicting_observations\": [\n \"Hand obscures lower half of face including mouth and chin\",\n \"Poor lighting and blur reduce visibility of key facial landmarks\",\n \"Expression and pose differ significantly from reference images\",\n \"Glasses are not present in test image but are in one reference image\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"General vision-language model cannot resolve partial occlusion and low-quality imagery\",\n \"Confidence below 0.75; requires biometric-model confirmation\",\n \"Cannot confirm identity due to insufficient visible facial features\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "POOR",
+          "quality_issues": [
+            "Low resolution",
+            "Blurry features",
+            "Hand partially obscuring face",
+            "Poor lighting and contrast"
+          ]
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "INSUFFICIENT_EVIDENCE",
+            "matched_identity": "",
+            "confidence": 0.55,
+            "match_margin": "NARROW",
+            "supporting_observations": [
+              "Visible dark, curly hair consistent with reference images",
+              "Eye shape and brow ridge appear similar",
+              "Skin tone and facial structure partially consistent"
+            ],
+            "conflicting_observations": [
+              "Hand obscures lower half of face including mouth and chin",
+              "Poor lighting and blur reduce visibility of key facial landmarks",
+              "Expression and pose differ significantly from reference images",
+              "Glasses are not present in test image but are in one reference image"
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "General vision-language model cannot resolve partial occlusion and low-quality imagery",
+          "Confidence below 0.75; requires biometric-model confirmation",
+          "Cannot confirm identity due to insufficient visible facial features"
+        ]
+      }
+    },
+    {
+      "case": "blurry_obstructed",
+      "run": 2,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_blurry_obstructed_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "processing_time_seconds": 60.106,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"POOR\",\n \"quality_issues\": [\n \"Low resolution\",\n \"Blurry features\",\n \"Hand partially obscuring face\",\n \"Poor lighting and contrast\"\n ]\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"INSUFFICIENT_EVIDENCE\",\n \"matched_identity\": \"\",\n \"confidence\": 0.55,\n \"match_margin\": \"NARROW\",\n \"supporting_observations\": [\n \"Visible dark, curly hair consistent with reference images\",\n \"Eye shape and brow ridge appear similar\",\n \"Skin tone and facial structure partially consistent\"\n ],\n \"conflicting_observations\": [\n \"Hand obscures lower half of face including mouth and chin\",\n \"Poor lighting and blur reduce visibility of key facial landmarks\",\n \"Expression and pose differ significantly from reference images\",\n \"Glasses are not present in test image but are in one reference image\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"General vision-language model cannot resolve partial occlusion and low-quality images\",\n \"Cannot confirm identity without clear, unobstructed facial features\",\n \"Confidence threshold for MATCHED_IDENTITY not met (below 0.75)\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "POOR",
+          "quality_issues": [
+            "Low resolution",
+            "Blurry features",
+            "Hand partially obscuring face",
+            "Poor lighting and contrast"
+          ]
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "INSUFFICIENT_EVIDENCE",
+            "matched_identity": "",
+            "confidence": 0.55,
+            "match_margin": "NARROW",
+            "supporting_observations": [
+              "Visible dark, curly hair consistent with reference images",
+              "Eye shape and brow ridge appear similar",
+              "Skin tone and facial structure partially consistent"
+            ],
+            "conflicting_observations": [
+              "Hand obscures lower half of face including mouth and chin",
+              "Poor lighting and blur reduce visibility of key facial landmarks",
+              "Expression and pose differ significantly from reference images",
+              "Glasses are not present in test image but are in one reference image"
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "General vision-language model cannot resolve partial occlusion and low-quality images",
+          "Cannot confirm identity without clear, unobstructed facial features",
+          "Confidence threshold for MATCHED_IDENTITY not met (below 0.75)"
+        ]
+      }
+    },
+    {
+      "case": "blurry_obstructed",
+      "run": 3,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_blurry_obstructed_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "INSUFFICIENT_EVIDENCE"
+      ],
+      "processing_time_seconds": 58.376,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"POOR\",\n \"quality_issues\": [\n \"Low resolution\",\n \"Blurry features\",\n \"Hand partially obscuring face\",\n \"Poor lighting and contrast\"\n ]\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"INSUFFICIENT_EVIDENCE\",\n \"matched_identity\": \"\",\n \"confidence\": 0.55,\n \"match_margin\": \"NARROW\",\n \"supporting_observations\": [\n \"Visible dark, curly hair consistent with reference images\",\n \"Eye shape and brow ridge appear similar\",\n \"Skin tone and facial structure partially consistent\"\n ],\n \"conflicting_observations\": [\n \"Hand obscures lower half of face including mouth and chin\",\n \"Poor lighting and blur reduce visibility of key facial landmarks\",\n \"Expression and pose differ significantly from reference images\",\n \"Glasses are not present in test image but are in one reference image\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"General vision-language model cannot resolve partial occlusion and low-quality images\",\n \"Cannot confirm identity without clear, unobstructed facial features\",\n \"Confidence threshold for MATCHED_IDENTITY not met (below 0.75)\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "POOR",
+          "quality_issues": [
+            "Low resolution",
+            "Blurry features",
+            "Hand partially obscuring face",
+            "Poor lighting and contrast"
+          ]
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "INSUFFICIENT_EVIDENCE",
+            "matched_identity": "",
+            "confidence": 0.55,
+            "match_margin": "NARROW",
+            "supporting_observations": [
+              "Visible dark, curly hair consistent with reference images",
+              "Eye shape and brow ridge appear similar",
+              "Skin tone and facial structure partially consistent"
+            ],
+            "conflicting_observations": [
+              "Hand obscures lower half of face including mouth and chin",
+              "Poor lighting and blur reduce visibility of key facial landmarks",
+              "Expression and pose differ significantly from reference images",
+              "Glasses are not present in test image but are in one reference image"
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "General vision-language model cannot resolve partial occlusion and low-quality images",
+          "Cannot confirm identity without clear, unobstructed facial features",
+          "Confidence threshold for MATCHED_IDENTITY not met (below 0.75)"
+        ]
+      }
+    },
+    {
+      "case": "no_face",
+      "run": 1,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_no_face.jpg",
+      "expected_count": 0,
+      "expected": [
+        "NO_FACE"
+      ],
+      "processing_time_seconds": 22.376,
+      "http_status": 200,
+      "raw_content": "{\n  \"face_detection\": {\n    \"face_present\": false,\n    \"face_count\": 0,\n    \"image_quality\": \"GOOD\",\n    \"quality_issues\": []\n  },\n  \"faces\": [],\n  \"overall_result\": \"UNUSABLE\",\n  \"model_limitations\": [\n    \"No human face is visible in the test image; only text is present.\"\n  ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": false,
+          "face_count": 0,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [],
+        "overall_result": "UNUSABLE",
+        "model_limitations": [
+          "No human face is visible in the test image; only text is present."
+        ]
+      }
+    },
+    {
+      "case": "no_face",
+      "run": 2,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_no_face.jpg",
+      "expected_count": 0,
+      "expected": [
+        "NO_FACE"
+      ],
+      "processing_time_seconds": 16.897,
+      "http_status": 200,
+      "raw_content": "{\n  \"face_detection\": {\n    \"face_present\": false,\n    \"face_count\": 0,\n    \"image_quality\": \"GOOD\",\n    \"quality_issues\": []\n  },\n  \"faces\": [],\n  \"overall_result\": \"UNUSABLE\",\n  \"model_limitations\": [\n    \"No human face is visible in the test image; only text is present.\"\n  ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": false,
+          "face_count": 0,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [],
+        "overall_result": "UNUSABLE",
+        "model_limitations": [
+          "No human face is visible in the test image; only text is present."
+        ]
+      }
+    },
+    {
+      "case": "no_face",
+      "run": 3,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_no_face.jpg",
+      "expected_count": 0,
+      "expected": [
+        "NO_FACE"
+      ],
+      "processing_time_seconds": 16.832,
+      "http_status": 200,
+      "raw_content": "{\n  \"face_detection\": {\n    \"face_present\": false,\n    \"face_count\": 0,\n    \"image_quality\": \"GOOD\",\n    \"quality_issues\": []\n  },\n  \"faces\": [],\n  \"overall_result\": \"UNUSABLE\",\n  \"model_limitations\": [\n    \"No human face is visible in the test image; only text is present.\"\n  ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": false,
+          "face_count": 0,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [],
+        "overall_result": "UNUSABLE",
+        "model_limitations": [
+          "No human face is visible in the test image; only text is present."
+        ]
+      }
+    },
+    {
+      "case": "printed_photo",
+      "run": 1,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_printed_photo_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "PERSON_A"
+      ],
+      "processing_time_seconds": 63.748,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"The test image shows a photograph of a person being held, not the person themselves. The visible face in the photograph matches the reference images for PERSON_A in overall facial geometry, including eye shape, nose structure, and hair texture.\"\n ],\n \"conflicting_observations\": [\n \"The test image is a photograph of a photograph, not a direct capture of the person. The reference images are direct captures of the person. This is a fundamental difference in context that prevents a direct biometric match. The test image does not provide a direct facial comparison for biometric verification.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"The model cannot verify identity when the test image is a photograph of a photograph. The model cannot resolve the context of the test image as a proxy for the person's direct appearance.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "The test image shows a photograph of a person being held, not the person themselves. The visible face in the photograph matches the reference images for PERSON_A in overall facial geometry, including eye shape, nose structure, and hair texture."
+            ],
+            "conflicting_observations": [
+              "The test image is a photograph of a photograph, not a direct capture of the person. The reference images are direct captures of the person. This is a fundamental difference in context that prevents a direct biometric match. The test image does not provide a direct facial comparison for biometric verification."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "The model cannot verify identity when the test image is a photograph of a photograph. The model cannot resolve the context of the test image as a proxy for the person's direct appearance."
+        ]
+      }
+    },
+    {
+      "case": "printed_photo",
+      "run": 2,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_printed_photo_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "PERSON_A"
+      ],
+      "processing_time_seconds": 57.39,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"The test image shows a photograph of a person being held, not the person themselves. The visible face in the photograph matches the reference images for PERSON_A in overall facial geometry, including eye shape, nose structure, and hair texture.\"\n ],\n \"conflicting_observations\": [\n \"The test image is a photograph of a photograph, not a direct capture of the person. The reference images are direct captures of the person. This is a fundamental difference in context that prevents a direct biometric match. The test image does not provide a direct facial comparison for biometric verification.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"The system cannot verify identity when the test image is a photograph of a photograph. The model is not designed to handle this scenario. The test image does not provide a direct facial capture for biometric comparison.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "The test image shows a photograph of a person being held, not the person themselves. The visible face in the photograph matches the reference images for PERSON_A in overall facial geometry, including eye shape, nose structure, and hair texture."
+            ],
+            "conflicting_observations": [
+              "The test image is a photograph of a photograph, not a direct capture of the person. The reference images are direct captures of the person. This is a fundamental difference in context that prevents a direct biometric match. The test image does not provide a direct facial comparison for biometric verification."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "The system cannot verify identity when the test image is a photograph of a photograph. The model is not designed to handle this scenario. The test image does not provide a direct facial capture for biometric comparison."
+        ]
+      }
+    },
+    {
+      "case": "printed_photo",
+      "run": 3,
+      "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_printed_photo_person_a.jpg",
+      "expected_count": 1,
+      "expected": [
+        "PERSON_A"
+      ],
+      "processing_time_seconds": 58.014,
+      "http_status": 200,
+      "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"The test image shows a photograph of a person being held, not the person themselves. The visible face in the photograph matches the reference images for PERSON_A in overall facial geometry, including eye shape, nose structure, and hair texture.\"\n ],\n \"conflicting_observations\": [\n \"The test image is a photograph of a photograph, not a direct capture of the person. The reference images are direct captures of the person. This is a fundamental difference in context that prevents a direct biometric match. The test image does not provide a direct facial comparison for biometric verification.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"The system cannot verify identity when the test image is a photograph of a photograph. The model is not designed to handle this scenario. The test image does not provide a direct facial capture for biometric comparison.\"\n ]\n}",
+      "json_valid": true,
+      "structure_valid": true,
+      "result": {
+        "face_detection": {
+          "face_present": true,
+          "face_count": 1,
+          "image_quality": "GOOD",
+          "quality_issues": []
+        },
+        "faces": [
+          {
+            "face_index": 0,
+            "location": "center",
+            "classification": "UNKNOWN_PERSON",
+            "matched_identity": "",
+            "confidence": 0.0,
+            "match_margin": "NOT_APPLICABLE",
+            "supporting_observations": [
+              "The test image shows a photograph of a person being held, not the person themselves. The visible face in the photograph matches the reference images for PERSON_A in overall facial geometry, including eye shape, nose structure, and hair texture."
+            ],
+            "conflicting_observations": [
+              "The test image is a photograph of a photograph, not a direct capture of the person. The reference images are direct captures of the person. This is a fundamental difference in context that prevents a direct biometric match. The test image does not provide a direct facial comparison for biometric verification."
+            ],
+            "needs_specialized_face_model": true
+          }
+        ],
+        "overall_result": "REVIEW_REQUIRED",
+        "model_limitations": [
+          "The system cannot verify identity when the test image is a photograph of a photograph. The model is not designed to handle this scenario. The test image does not provide a direct facial capture for biometric comparison."
+        ]
+      }
+    }
+  ]
+}

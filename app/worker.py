@@ -102,11 +102,14 @@ def process_job(con, job: dict, cfg: dict, lease_seconds: int, hard_timeout: int
         next_status = 'NEEDS_REPROCESS' if needs else 'DONE'
         elapsed_ms = int((time.monotonic() - started) * 1000)
         execute(con, """UPDATE images SET width=?,height=?,thumbnail_path=?,analysis_path=?,status=?,error_message=NULL,
-            short_caption=?,detailed_description=?,image_type=?,category=?,tags=?,objects=?,visible_text=?,model_used=?,prompt_version=?,
+            short_caption=?,detailed_description=?,scene_type=?,orientation=?,image_type=?,category=?,tags=?,objects=?,visible_text=?,
+            people_detected=?,people_count=?,face_detected=?,face_count=?,model_used=?,prompt_version=?,
             needs_reprocess=?,retry_count=COALESCE(retry_count,0)+?,retry_focus=?,quality_issue=?,confidence=?,processed_at=CURRENT_TIMESTAMP,
             processing_finished_at=CURRENT_TIMESTAMP,processing_duration_ms=?,last_job_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=?""",
             (width,height,thumb,analysis,next_status,result.get('short_caption',''),result.get('detailed_description',''),
-             result.get('image_type',''),result.get('category',''),result.get('tags',''),result.get('objects',''),result.get('visible_text',''),
+             result.get('scene_type',''),result.get('orientation',''),result.get('image_type',''),result.get('category',''),
+             result.get('tags',''),result.get('objects',''),result.get('visible_text',''),result.get('people_detected',0),
+             result.get('people_count',0),result.get('face_detected',0),result.get('face_count',0),
              cfg.get('vision',{}).get('model','none'),cfg.get('vision',{}).get('prompt_version','v1'),needs,
              1 if needs or image['status'] in ('NEEDS_REPROCESS','FAILED') else 0,result.get('retry_focus',''),
              result.get('quality_issue',''),float(result.get('confidence',0) or 0),elapsed_ms,job['job_id'],image['id']))

@@ -1,0 +1,43 @@
+{
+  "case": "small_distant",
+  "run": 2,
+  "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_small_distant_person_a.jpg",
+  "expected_count": 1,
+  "expected": [
+    "INSUFFICIENT_EVIDENCE"
+  ],
+  "processing_time_seconds": 48.644,
+  "http_status": 200,
+  "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.78,\n \"match_margin\": \"NARROW\",\n \"supporting_observations\": [\n \"Visible facial geometry including dark curly hair, facial structure, and eye shape are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows the person outdoors with different lighting, pose, and expression compared to the reference images. The reference images show a neutral or smiling expression with glasses in one, while the test image shows a neutral expression without glasses. The background and scale are different.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"The model cannot confirm identity without biometric-model confirmation. The match is based on visible features but is affected by pose, lighting, and expression differences.\"\n ]\n}",
+  "json_valid": true,
+  "structure_valid": true,
+  "result": {
+    "face_detection": {
+      "face_present": true,
+      "face_count": 1,
+      "image_quality": "GOOD",
+      "quality_issues": []
+    },
+    "faces": [
+      {
+        "face_index": 0,
+        "location": "center",
+        "classification": "UNKNOWN_PERSON",
+        "matched_identity": "",
+        "confidence": 0.78,
+        "match_margin": "NARROW",
+        "supporting_observations": [
+          "Visible facial geometry including dark curly hair, facial structure, and eye shape are consistent with reference images for PERSON_A."
+        ],
+        "conflicting_observations": [
+          "The test image shows the person outdoors with different lighting, pose, and expression compared to the reference images. The reference images show a neutral or smiling expression with glasses in one, while the test image shows a neutral expression without glasses. The background and scale are different."
+        ],
+        "needs_specialized_face_model": true
+      }
+    ],
+    "overall_result": "REVIEW_REQUIRED",
+    "model_limitations": [
+      "The model cannot confirm identity without biometric-model confirmation. The match is based on visible features but is affected by pose, lighting, and expression differences."
+    ]
+  }
+}

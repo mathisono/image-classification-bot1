@@ -8,43 +8,30 @@ import requests
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-VISION_PROMPT = """You are an expert visual archivist creating high-value searchable database entries for a private local image archive.
-Your job is to add semantic information that file tools such as identify/exiftool cannot provide. Do not waste space on obvious metadata like image dimensions, file format, compression, or color profile unless it is visually relevant.
+VISION_PROMPT = """Look at the image and answer simple questions.
 
-Look carefully at the image and produce one factual database record optimized for later search and retrieval.
+Use only what you can see. Do not guess names, dates, places, brands, identities, or relationships.
 
-Core rules:
-- Be specific, concrete, and searchable.
-- Do not invent names, dates, locations, brands, model numbers, identities, or relationships.
-- If something is uncertain, use cautious wording such as "possibly", "appears to be", or "unknown".
-- Prefer useful visual facts over generic captions.
-- Mention distinctive objects, readable labels, signage, logos, document titles, UI text, equipment shapes, connectors, rack gear, controls, uniforms, landmarks, and scene context.
-- If people are visible, describe only non-sensitive visual context such as count, pose, clothing, activity, and setting; do not identify private people.
-- Preserve all clearly readable text in visible_text. Keep line breaks or separators when useful.
+Questions:
+1. What is the image mainly showing?
+2. What kind of image is it: photo, screenshot, document, artwork, diagram, logo, or unknown?
+3. Is it portrait, landscape, square, or unknown?
+4. What broad category would help someone find it later?
+5. What visible objects or equipment are present?
+6. What readable text is visible, if any?
+7. Are any people or faces visible? If yes, how many?
+8. Is the image clear enough to describe confidently?
 
-Archive priorities:
-- stage, theater, backstage, production, rigging, lighting, sound, projection, AV, cameras, radio equipment, antennas, network gear, computers, test equipment, tools, cables, cases, racks, labels, documents, screenshots, logos, flyers, maps, aircraft/airplanes/helicopters/airports/aviation markings, Berkeley/UC Berkeley/Campanile imagery, union or IATSE-related graphics.
-
-Field guidance:
-- short_caption: one concise factual caption with the main subject and context; avoid "image of".
-- detailed_description: 2-5 sentences with searchable specifics: subject, setting, visible actions, notable objects/equipment, text/logos, and why it may matter in the archive.
-- image_type: choose a useful type such as photo, screenshot, document, flyer, logo, diagram, artwork, equipment photo, stage photo, unknown.
-- category: choose a browsing category such as theater production, av equipment, radio/network gear, documents, screenshots, Berkeley, personal archive, unreviewed.
-- tags: 8-20 lowercase search tags including synonyms a user might search for.
-- objects: list the visible physical/digital objects and equipment; include probable generic names even when exact model is unknown.
-- confidence: estimate accuracy from 0.0 to 1.0.
-
-Quality control:
-Mark needs_reprocess true when the entry would not beat basic file identification for search usefulness, when important text is unreadable, when equipment/document details are too vague, when the image is blurry/ambiguous, or when the record is missing useful searchable details. In retry_focus, say exactly what a retry should focus on, such as OCR, equipment identification, logo reading, document title, screenshot UI, or fuller scene description."""
+Return JSON only with concise answers."""
 
 REQUIRED_DB_FIELDS = [
     "short_caption",
     "detailed_description",
+    "scene_type",
+    "orientation",
     "image_type",
     "category",
     "tags",
-    "objects",
-    "visible_text",
 ]
 
 
@@ -55,17 +42,23 @@ class ImageClassificationRecord(BaseModel):
 
     short_caption: str = Field(default="unknown", description="One short, factual caption for the image. Use unknown if unclear.")
     detailed_description: str = Field(default="unknown", description="A factual searchable description. Do not invent names, locations, dates, or identities.")
+    scene_type: str = Field(default="unknown", description="Portrait, landscape, document, screenshot, object, people, group photo, equipment, or unknown.")
+    orientation: str = Field(default="unknown", description="Portrait, landscape, square, or unknown.")
     image_type: str = Field(default="unknown", description="Photo, screenshot, document, logo, flyer, diagram, artwork, unknown, etc.")
     category: str = Field(default="unreviewed", description="A broad archive category useful for browsing.")
     tags: list[str] = Field(default_factory=list, description="Short searchable tags. Prefer lowercase simple phrases.")
     objects: list[str] = Field(default_factory=list, description="Visible objects, gear, equipment, landmarks, or document types.")
     visible_text: str = Field(default="", description="Any clearly readable text in the image. Use an empty string if none is readable.")
+    people_detected: bool = Field(default=False, description="True if any person is visible.")
+    people_count: int = Field(default=0, ge=0, description="Count of visible people.")
+    face_detected: bool = Field(default=False, description="True if any human face is visible.")
+    face_count: int = Field(default=0, ge=0, description="Count of visible human faces.")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Confidence in the classification from 0.0 to 1.0.")
     needs_reprocess: bool = Field(default=False, description="True if the image should be retried with a better prompt/model/pass.")
     retry_focus: str = Field(default="", description="Specific focus for the next retry, such as OCR, equipment ID, blurry image, document text, faces/people, logos, or model JSON formatting.")
     quality_issue: str = Field(default="", description="Short explanation of what is missing or weak in this classification.")
 
-    @field_validator("short_caption", "detailed_description", "image_type", "category", "visible_text", "retry_focus", "quality_issue", mode="before")
+    @field_validator("short_caption", "detailed_description", "scene_type", "orientation", "image_type", "category", "visible_text", "retry_focus", "quality_issue", mode="before")
     @classmethod
     def _stringify_text_fields(cls, value: Any) -> str:
         if value is None:
@@ -86,15 +79,58 @@ class ImageClassificationRecord(BaseModel):
             return [str(item).strip() for item in value if str(item).strip()]
         return [str(value).strip()] if str(value).strip() else []
 
+    @field_validator("people_detected", "face_detected", mode="before")
+    @classmethod
+    def _coerce_bool(cls, value: Any) -> bool:
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return False
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+        return bool(value)
+
+    @field_validator("people_count", "face_count", mode="before")
+    @classmethod
+    def _coerce_int(cls, value: Any) -> int:
+        try:
+            return max(0, int(value))
+        except (TypeError, ValueError):
+            return 0
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def _coerce_confidence(cls, value: Any) -> float:
+        if isinstance(value, str):
+            label = value.strip().lower()
+            labels = {"high": 0.9, "medium": 0.6, "moderate": 0.6, "low": 0.3}
+            if label in labels:
+                return labels[label]
+            if label.endswith("%"):
+                try:
+                    return float(label[:-1]) / 100
+                except ValueError:
+                    return 0.0
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0
+
     def to_db_dict(self) -> dict[str, str | int | float]:
         return {
             "short_caption": self.short_caption or "unknown",
             "detailed_description": self.detailed_description or "unknown",
+            "scene_type": self.scene_type or "unknown",
+            "orientation": self.orientation or "unknown",
             "image_type": self.image_type or "unknown",
             "category": self.category or "unreviewed",
             "tags": ", ".join(self.tags),
             "objects": ", ".join(self.objects),
             "visible_text": self.visible_text or "",
+            "people_detected": 1 if self.people_detected else 0,
+            "people_count": max(0, int(self.people_count or 0)),
+            "face_detected": 1 if self.face_detected else 0,
+            "face_count": max(0, int(self.face_count or 0)),
             "confidence": float(self.confidence),
             "needs_reprocess": 1 if self.needs_reprocess else 0,
             "retry_focus": self.retry_focus or "",
@@ -106,11 +142,17 @@ def _vision_disabled_result() -> dict[str, str | int | float]:
     return {
         "short_caption": "Vision disabled; thumbnail and metadata indexed only.",
         "detailed_description": "Enable vision.enabled in config.yaml and point base_url/model at a local vision model.",
+        "scene_type": "unknown",
+        "orientation": "unknown",
         "image_type": "unknown",
         "category": "unreviewed",
         "tags": "",
         "objects": "",
         "visible_text": "",
+        "people_detected": 0,
+        "people_count": 0,
+        "face_detected": 0,
+        "face_count": 0,
         "confidence": 0.0,
         "needs_reprocess": 0,
         "retry_focus": "Enable a local vision model and reprocess.",
@@ -125,6 +167,28 @@ def _strip_code_fence(content: str) -> str:
         if content.lower().startswith("json"):
             content = content[4:].strip()
     return content
+
+
+def _parse_json_object(content: str) -> dict[str, Any]:
+    """Parse a JSON object even when a local model wraps it in prose or fences."""
+    cleaned = _strip_code_fence(content)
+    try:
+        value = json.loads(cleaned)
+    except json.JSONDecodeError as original_error:
+        decoder = json.JSONDecoder()
+        for index, char in enumerate(cleaned):
+            if char != "{":
+                continue
+            try:
+                value, _ = decoder.raw_decode(cleaned[index:])
+                break
+            except json.JSONDecodeError:
+                continue
+        else:
+            raise original_error
+    if not isinstance(value, dict):
+        raise ValueError("vision model response must contain a JSON object")
+    return value
 
 
 def review_classification_quality(result: dict[str, Any]) -> dict[str, str | int | float]:
@@ -153,19 +217,22 @@ def review_classification_quality(result: dict[str, Any]) -> dict[str, str | int
         retry_reasons.append("description too thin")
     if not tags:
         retry_reasons.append("no searchable tags")
-    if not objects:
-        retry_reasons.append("no object/equipment list")
     if confidence and confidence < 0.45:
         retry_reasons.append(f"low confidence: {confidence:.2f}")
+
+    for field_name in ("scene_type", "orientation"):
+        value = str(cleaned.get(field_name, "") or "").strip().lower()
+        if not value or value in {"unknown", "none", "n/a", "null"}:
+            retry_reasons.append(f"missing {field_name}")
 
     if retry_reasons:
         existing_focus = str(cleaned.get("retry_focus", "") or "").strip()
         if not existing_focus:
             focus_bits: list[str] = []
-            if "visible_text" in missing:
-                focus_bits.append("OCR/read visible text")
-            if "objects" in missing or not objects:
-                focus_bits.append("identify visible objects/equipment")
+            if "scene_type" in missing:
+                focus_bits.append("identify scene type")
+            if "orientation" in missing:
+                focus_bits.append("classify orientation")
             if "tags" in missing or not tags:
                 focus_bits.append("generate searchable tags")
             if len(description) < 30:
@@ -206,7 +273,7 @@ def _classify_with_pydantic_ai(analysis_path: str, cfg: dict) -> dict[str, str |
     )
     result = agent.run_sync(
         [
-            "Return one validated image catalog record for this image. Include retry_focus if any important searchable information is missing.",
+            "Return one validated archive record for this image. Keep values concise and factual.",
             BinaryContent(data=image_path.read_bytes(), media_type=mime),
         ]
     )
@@ -230,17 +297,18 @@ def _classify_with_legacy_json_request(analysis_path: str, cfg: dict) -> dict[st
                     {
                         "type": "text",
                         "text": (
-                            VISION_PROMPT
-                            + "\n\nReturn JSON only with these fields: "
-                            "short_caption, detailed_description, image_type, category, tags, objects, visible_text, confidence, needs_reprocess, retry_focus, quality_issue."
+                            VISION_PROMPT + "\n\nReturn JSON only with these fields: "
+                            "short_caption, detailed_description, scene_type, orientation, image_type, category, tags, objects, visible_text, people_detected, people_count, face_detected, face_count, confidence, needs_reprocess, retry_focus, quality_issue."
                         ),
                     },
                     {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
                 ],
             }
         ],
-        "temperature": 0.1,
-        "max_tokens": 900,
+        "temperature": 0.0,
+        "max_tokens": int(cfg.get("max_tokens", 2000)),
+        "reasoning_effort": "none",
+        "thinking": {"type": "disabled"},
     }
     headers = {"Authorization": f"Bearer {cfg.get('api_key', 'not-needed')}"}
     r = requests.post(
@@ -250,8 +318,12 @@ def _classify_with_legacy_json_request(analysis_path: str, cfg: dict) -> dict[st
         timeout=int(cfg.get("timeout_seconds", 180)),
     )
     r.raise_for_status()
-    content = r.json()["choices"][0]["message"]["content"].strip()
-    data = json.loads(_strip_code_fence(content))
+    response = r.json()
+    choice = response["choices"][0]
+    content = str(choice["message"].get("content") or "").strip()
+    if not content:
+        raise ValueError(f"vision model returned empty content (finish_reason={choice.get('finish_reason', 'unknown')})")
+    data = _parse_json_object(content)
     return review_classification_quality(data)
 
 

@@ -23,10 +23,17 @@ Before reporting that the service is running, verify `./control.sh status` and p
 - Main coordinator: `realtime_mini_voice`
 - Main coordinator model: `qwythos-9b-claude-mythos-5-1m@q4_k_m`
 - Vision agent: `betty`
-- Vision model: `lmstudio/zai-org/glm-4.6v-flash`
-- Queue workers: `betty_image_worker_1`, `betty_image_worker_2`, and so on
+- Vision model: `zai-org/glm-4.6v-flash`
+- Queue workers: three user-systemd services with worker IDs
+  `betty_image_worker_1` through `betty_image_worker_3`
 
 The coordinator must not perform image classifications itself. Betty workers claim jobs from the durable SQLite queue and record Betty as `agent_name` with a unique worker ID.
+
+`control.sh` is the deployment source of truth. It creates one web unit and
+the configured number of transient user-systemd worker units. A worker forks a
+short-lived child while classifying a job, so duplicate-looking parent/child
+commands in `ps` are expected. Restart the services after changing
+`config.yaml` because workers load configuration at startup.
 
 ## Windows archive requirement
 

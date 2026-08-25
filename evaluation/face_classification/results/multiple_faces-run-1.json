@@ -1,0 +1,59 @@
+{
+  "case": "multiple_faces",
+  "run": 1,
+  "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_multiple_a_and_b.jpg",
+  "expected_count": 2,
+  "expected": [
+    "PERSON_A",
+    "UNKNOWN_PERSON"
+  ],
+  "processing_time_seconds": 120.083,
+  "http_status": 200,
+  "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 2,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"left\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry and features are consistent with reference images for PERSON_A, including dark curly hair, eye shape, and facial structure.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows two individuals, but the left individual's face is not clearly distinguishable from the right individual's face due to similar appearance and lack of unique distinguishing features in this context. The reference images for PERSON_A do not include a side-by-side comparison with another person, and the test image does not provide sufficient evidence to confirm if the left individual is the same person as the right individual or if they are two separate individuals. The system cannot confirm identity without clear distinction.\"\n ],\n \"needs_specialized_face_model\": true\n },\n {\n \"face_index\": 1,\n \"location\": \"right\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry and features are consistent with reference images for PERSON_A, including dark curly hair, eye shape, and facial structure.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows two individuals, but the right individual's face is not clearly distinguishable from the left individual's face due to similar appearance and lack of unique distinguishing features in this context. The reference images for PERSON_A do not include a side-by-side comparison with another person, and the test image does not provide sufficient evidence to confirm if the right individual is the same person as the left individual or if they are two separate individuals. The system cannot confirm identity without clear distinction.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"The model cannot distinguish between two individuals with identical or very similar facial features without additional context or biometric-model confirmation. The system cannot confirm identity without clear distinction between the two individuals in the test image.\"\n ]\n}",
+  "json_valid": true,
+  "structure_valid": true,
+  "result": {
+    "face_detection": {
+      "face_present": true,
+      "face_count": 2,
+      "image_quality": "GOOD",
+      "quality_issues": []
+    },
+    "faces": [
+      {
+        "face_index": 0,
+        "location": "left",
+        "classification": "UNKNOWN_PERSON",
+        "matched_identity": "",
+        "confidence": 0.0,
+        "match_margin": "NOT_APPLICABLE",
+        "supporting_observations": [
+          "Visible facial geometry and features are consistent with reference images for PERSON_A, including dark curly hair, eye shape, and facial structure."
+        ],
+        "conflicting_observations": [
+          "The test image shows two individuals, but the left individual's face is not clearly distinguishable from the right individual's face due to similar appearance and lack of unique distinguishing features in this context. The reference images for PERSON_A do not include a side-by-side comparison with another person, and the test image does not provide sufficient evidence to confirm if the left individual is the same person as the right individual or if they are two separate individuals. The system cannot confirm identity without clear distinction."
+        ],
+        "needs_specialized_face_model": true
+      },
+      {
+        "face_index": 1,
+        "location": "right",
+        "classification": "UNKNOWN_PERSON",
+        "matched_identity": "",
+        "confidence": 0.0,
+        "match_margin": "NOT_APPLICABLE",
+        "supporting_observations": [
+          "Visible facial geometry and features are consistent with reference images for PERSON_A, including dark curly hair, eye shape, and facial structure."
+        ],
+        "conflicting_observations": [
+          "The test image shows two individuals, but the right individual's face is not clearly distinguishable from the left individual's face due to similar appearance and lack of unique distinguishing features in this context. The reference images for PERSON_A do not include a side-by-side comparison with another person, and the test image does not provide sufficient evidence to confirm if the right individual is the same person as the left individual or if they are two separate individuals. The system cannot confirm identity without clear distinction."
+        ],
+        "needs_specialized_face_model": true
+      }
+    ],
+    "overall_result": "REVIEW_REQUIRED",
+    "model_limitations": [
+      "The model cannot distinguish between two individuals with identical or very similar facial features without additional context or biometric-model confirmation. The system cannot confirm identity without clear distinction between the two individuals in the test image."
+    ]
+  }
+}

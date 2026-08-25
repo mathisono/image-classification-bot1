@@ -1,0 +1,27 @@
+{
+  "case": "no_face",
+  "run": 1,
+  "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_no_face.jpg",
+  "expected_count": 0,
+  "expected": [
+    "NO_FACE"
+  ],
+  "processing_time_seconds": 22.376,
+  "http_status": 200,
+  "raw_content": "{\n  \"face_detection\": {\n    \"face_present\": false,\n    \"face_count\": 0,\n    \"image_quality\": \"GOOD\",\n    \"quality_issues\": []\n  },\n  \"faces\": [],\n  \"overall_result\": \"UNUSABLE\",\n  \"model_limitations\": [\n    \"No human face is visible in the test image; only text is present.\"\n  ]\n}",
+  "json_valid": true,
+  "structure_valid": true,
+  "result": {
+    "face_detection": {
+      "face_present": false,
+      "face_count": 0,
+      "image_quality": "GOOD",
+      "quality_issues": []
+    },
+    "faces": [],
+    "overall_result": "UNUSABLE",
+    "model_limitations": [
+      "No human face is visible in the test image; only text is present."
+    ]
+  }
+}

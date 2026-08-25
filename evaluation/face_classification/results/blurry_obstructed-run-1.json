@@ -1,0 +1,55 @@
+{
+  "case": "blurry_obstructed",
+  "run": 1,
+  "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_blurry_obstructed_person_a.jpg",
+  "expected_count": 1,
+  "expected": [
+    "INSUFFICIENT_EVIDENCE"
+  ],
+  "processing_time_seconds": 64.92,
+  "http_status": 200,
+  "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"POOR\",\n \"quality_issues\": [\n \"Low resolution\",\n \"Blurry features\",\n \"Hand partially obscuring face\",\n \"Poor lighting and contrast\"\n ]\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"INSUFFICIENT_EVIDENCE\",\n \"matched_identity\": \"\",\n \"confidence\": 0.55,\n \"match_margin\": \"NARROW\",\n \"supporting_observations\": [\n \"Visible dark, curly hair consistent with reference images\",\n \"Eye shape and brow ridge appear similar\",\n \"Skin tone and facial structure partially consistent\"\n ],\n \"conflicting_observations\": [\n \"Hand obscures lower half of face including mouth and chin\",\n \"Poor lighting and blur reduce visibility of key facial landmarks\",\n \"Expression and pose differ significantly from reference images\",\n \"Glasses are not present in test image but are in one reference image\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"General vision-language model cannot resolve partial occlusion and low-quality imagery\",\n \"Confidence below 0.75; requires biometric-model confirmation\",\n \"Cannot confirm identity due to insufficient visible facial features\"\n ]\n}",
+  "json_valid": true,
+  "structure_valid": true,
+  "result": {
+    "face_detection": {
+      "face_present": true,
+      "face_count": 1,
+      "image_quality": "POOR",
+      "quality_issues": [
+        "Low resolution",
+        "Blurry features",
+        "Hand partially obscuring face",
+        "Poor lighting and contrast"
+      ]
+    },
+    "faces": [
+      {
+        "face_index": 0,
+        "location": "center",
+        "classification": "INSUFFICIENT_EVIDENCE",
+        "matched_identity": "",
+        "confidence": 0.55,
+        "match_margin": "NARROW",
+        "supporting_observations": [
+          "Visible dark, curly hair consistent with reference images",
+          "Eye shape and brow ridge appear similar",
+          "Skin tone and facial structure partially consistent"
+        ],
+        "conflicting_observations": [
+          "Hand obscures lower half of face including mouth and chin",
+          "Poor lighting and blur reduce visibility of key facial landmarks",
+          "Expression and pose differ significantly from reference images",
+          "Glasses are not present in test image but are in one reference image"
+        ],
+        "needs_specialized_face_model": true
+      }
+    ],
+    "overall_result": "REVIEW_REQUIRED",
+    "model_limitations": [
+      "General vision-language model cannot resolve partial occlusion and low-quality imagery",
+      "Confidence below 0.75; requires biometric-model confirmation",
+      "Cannot confirm identity due to insufficient visible facial features"
+    ]
+  }
+}

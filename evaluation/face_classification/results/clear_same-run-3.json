@@ -1,0 +1,43 @@
+{
+  "case": "clear_same",
+  "run": 3,
+  "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_clear_person_a.jpg",
+  "expected_count": 1,
+  "expected": [
+    "PERSON_A"
+  ],
+  "processing_time_seconds": 47.085,
+  "http_status": 200,
+  "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"The test face has similar overall facial geometry, including eye shape, nose bridge, and jawline, to the reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test face lacks glasses, which are present in one reference image. The expression and lighting conditions differ slightly. The background color is different. These variations, while minor, are sufficient to prevent a confident match under biometric standards.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"This model cannot make final biometric identity decisions. It requires specialized face recognition models for confirmation.\"\n ]\n}",
+  "json_valid": true,
+  "structure_valid": true,
+  "result": {
+    "face_detection": {
+      "face_present": true,
+      "face_count": 1,
+      "image_quality": "GOOD",
+      "quality_issues": []
+    },
+    "faces": [
+      {
+        "face_index": 0,
+        "location": "center",
+        "classification": "UNKNOWN_PERSON",
+        "matched_identity": "",
+        "confidence": 0.0,
+        "match_margin": "NOT_APPLICABLE",
+        "supporting_observations": [
+          "The test face has similar overall facial geometry, including eye shape, nose bridge, and jawline, to the reference images for PERSON_A."
+        ],
+        "conflicting_observations": [
+          "The test face lacks glasses, which are present in one reference image. The expression and lighting conditions differ slightly. The background color is different. These variations, while minor, are sufficient to prevent a confident match under biometric standards."
+        ],
+        "needs_specialized_face_model": true
+      }
+    ],
+    "overall_result": "REVIEW_REQUIRED",
+    "model_limitations": [
+      "This model cannot make final biometric identity decisions. It requires specialized face recognition models for confirmation."
+    ]
+  }
+}

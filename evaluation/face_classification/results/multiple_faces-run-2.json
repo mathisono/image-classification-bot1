@@ -1,0 +1,59 @@
+{
+  "case": "multiple_faces",
+  "run": 2,
+  "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_multiple_a_and_b.jpg",
+  "expected_count": 2,
+  "expected": [
+    "PERSON_A",
+    "UNKNOWN_PERSON"
+  ],
+  "processing_time_seconds": 94.362,
+  "http_status": 200,
+  "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 2,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"left\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry and features are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows two individuals, but the left individual's pose and expression differ from the reference images. The reference images show a neutral expression with direct gaze, while the test image shows a slightly different head tilt and expression. The lighting and background are also different.\"\n ],\n \"needs_specialized_face_model\": true\n },\n {\n \"face_index\": 1,\n \"location\": \"right\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry and features are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows two individuals, but the right individual's pose and expression differ from the reference images. The reference images show a neutral expression with direct gaze, while the test image shows a slightly different head tilt and expression. The lighting and background are also different.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"The model cannot confirm identity without biometric-model confirmation. The test image contains two individuals, but the system is designed to classify each face independently. The reference images are for a single identity (PERSON_A), but the test image shows two individuals who may or may not be the same person. The model cannot determine if the two individuals in the test image are the same person as the reference images without additional context.\"\n ]\n}",
+  "json_valid": true,
+  "structure_valid": true,
+  "result": {
+    "face_detection": {
+      "face_present": true,
+      "face_count": 2,
+      "image_quality": "GOOD",
+      "quality_issues": []
+    },
+    "faces": [
+      {
+        "face_index": 0,
+        "location": "left",
+        "classification": "UNKNOWN_PERSON",
+        "matched_identity": "",
+        "confidence": 0.0,
+        "match_margin": "NOT_APPLICABLE",
+        "supporting_observations": [
+          "Visible facial geometry and features are consistent with reference images for PERSON_A."
+        ],
+        "conflicting_observations": [
+          "The test image shows two individuals, but the left individual's pose and expression differ from the reference images. The reference images show a neutral expression with direct gaze, while the test image shows a slightly different head tilt and expression. The lighting and background are also different."
+        ],
+        "needs_specialized_face_model": true
+      },
+      {
+        "face_index": 1,
+        "location": "right",
+        "classification": "UNKNOWN_PERSON",
+        "matched_identity": "",
+        "confidence": 0.0,
+        "match_margin": "NOT_APPLICABLE",
+        "supporting_observations": [
+          "Visible facial geometry and features are consistent with reference images for PERSON_A."
+        ],
+        "conflicting_observations": [
+          "The test image shows two individuals, but the right individual's pose and expression differ from the reference images. The reference images show a neutral expression with direct gaze, while the test image shows a slightly different head tilt and expression. The lighting and background are also different."
+        ],
+        "needs_specialized_face_model": true
+      }
+    ],
+    "overall_result": "REVIEW_REQUIRED",
+    "model_limitations": [
+      "The model cannot confirm identity without biometric-model confirmation. The test image contains two individuals, but the system is designed to classify each face independently. The reference images are for a single identity (PERSON_A), but the test image shows two individuals who may or may not be the same person. The model cannot determine if the two individuals in the test image are the same person as the reference images without additional context."
+    ]
+  }
+}

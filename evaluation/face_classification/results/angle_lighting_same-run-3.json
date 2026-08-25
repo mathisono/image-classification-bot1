@@ -1,0 +1,43 @@
+{
+  "case": "angle_lighting_same",
+  "run": 3,
+  "test_image": "/home/bill/image_librarian/evaluation/face_classification/images_512/test_angle_person_a.jpg",
+  "expected_count": 1,
+  "expected": [
+    "PERSON_A"
+  ],
+  "processing_time_seconds": 46.867,
+  "http_status": 200,
+  "raw_content": "{\n \"face_detection\": {\n \"face_present\": true,\n \"face_count\": 1,\n \"image_quality\": \"GOOD\",\n \"quality_issues\": []\n },\n \"faces\": [\n {\n \"face_index\": 0,\n \"location\": \"center\",\n \"classification\": \"UNKNOWN_PERSON\",\n \"matched_identity\": \"\",\n \"confidence\": 0.0,\n \"match_margin\": \"NOT_APPLICABLE\",\n \"supporting_observations\": [\n \"Visible facial geometry including dark curly hair, eye shape, and facial structure are consistent with reference images for PERSON_A.\"\n ],\n \"conflicting_observations\": [\n \"The test image shows the person in profile view with a different expression and background, while reference images show frontal views. The test image lacks glasses, which is present in one reference image. Lighting and pose differences are significant.\"\n ],\n \"needs_specialized_face_model\": true\n }\n ],\n \"overall_result\": \"REVIEW_REQUIRED\",\n \"model_limitations\": [\n \"General vision-language model cannot make final biometric decisions. Differences in pose, expression, and lighting require specialized face recognition model confirmation.\"\n ]\n}",
+  "json_valid": true,
+  "structure_valid": true,
+  "result": {
+    "face_detection": {
+      "face_present": true,
+      "face_count": 1,
+      "image_quality": "GOOD",
+      "quality_issues": []
+    },
+    "faces": [
+      {
+        "face_index": 0,
+        "location": "center",
+        "classification": "UNKNOWN_PERSON",
+        "matched_identity": "",
+        "confidence": 0.0,
+        "match_margin": "NOT_APPLICABLE",
+        "supporting_observations": [
+          "Visible facial geometry including dark curly hair, eye shape, and facial structure are consistent with reference images for PERSON_A."
+        ],
+        "conflicting_observations": [
+          "The test image shows the person in profile view with a different expression and background, while reference images show frontal views. The test image lacks glasses, which is present in one reference image. Lighting and pose differences are significant."
+        ],
+        "needs_specialized_face_model": true
+      }
+    ],
+    "overall_result": "REVIEW_REQUIRED",
+    "model_limitations": [
+      "General vision-language model cannot make final biometric decisions. Differences in pose, expression, and lighting require specialized face recognition model confirmation."
+    ]
+  }
+}

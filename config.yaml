@@ -59,7 +59,7 @@ scanner:
   skip_hidden_dirs: true
   shared_fs_stability_seconds: 5
   mark_missing_as: "MISSING_SOURCE"
-  expected_archive_size: 1000000
+  expected_archive_size: 500000
 
 safety:
   max_original_file_mb: 300
@@ -73,17 +73,18 @@ openclaw:
   vision_agent: "betty"
 
 workers:
-  recommended_count: 4
+  recommended_count: 3
   poll_seconds: 2
   lease_seconds: 120
-  hard_timeout_seconds: 75
+  hard_timeout_seconds: 180
 
 vision:
   enabled: true
   base_url: "http://192.168.3.38:1234/v1"
   api_key: "not-needed"
   model: "zai-org/glm-4.6v-flash"
-  timeout_seconds: 60
-  prompt_version: "image_librarian_text_ocr_v1"
+  timeout_seconds: 180
+  max_tokens: 2000
+  prompt_version: "image_librarian_simple_questions_v1"
   structured_output: "legacy_json"
   fallback_to_legacy_json: false
