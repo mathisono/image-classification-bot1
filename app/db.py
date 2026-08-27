@@ -66,6 +66,34 @@ CREATE TABLE IF NOT EXISTS person_reference_faces (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(person_id) REFERENCES people(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS detected_faces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    image_id INTEGER NOT NULL,
+    face_index INTEGER NOT NULL,
+    detector_model TEXT NOT NULL,
+    embedding_model TEXT,
+    source_width INTEGER NOT NULL,
+    source_height INTEGER NOT NULL,
+    bbox_x INTEGER NOT NULL,
+    bbox_y INTEGER NOT NULL,
+    bbox_width INTEGER NOT NULL,
+    bbox_height INTEGER NOT NULL,
+    landmarks_json TEXT,
+    detection_confidence REAL NOT NULL,
+    quality_score REAL,
+    crop_path TEXT,
+    embedding BLOB,
+    embedding_dimensions INTEGER,
+    processing_status TEXT NOT NULL DEFAULT 'READY',
+    recognized_person_id INTEGER,
+    recognition_confidence REAL,
+    recognition_status TEXT NOT NULL DEFAULT 'UNREVIEWED',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(image_id, face_index),
+    FOREIGN KEY(image_id) REFERENCES images(id) ON DELETE CASCADE,
+    FOREIGN KEY(recognized_person_id) REFERENCES people(id) ON DELETE SET NULL
+);
 CREATE TABLE IF NOT EXISTS image_embeddings (
     image_id INTEGER NOT NULL,
     embedding_type TEXT NOT NULL,
@@ -133,6 +161,8 @@ CREATE INDEX IF NOT EXISTS idx_images_has_face ON images(has_face);
 CREATE INDEX IF NOT EXISTS idx_jobs_status_created ON jobs(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_jobs_image_active ON jobs(image_id, status);
 CREATE INDEX IF NOT EXISTS idx_reference_person_status ON person_reference_faces(person_id, processing_status);
+CREATE INDEX IF NOT EXISTS idx_detected_faces_image ON detected_faces(image_id, face_index);
+CREATE INDEX IF NOT EXISTS idx_detected_faces_recognition ON detected_faces(recognition_status, recognized_person_id);
 CREATE INDEX IF NOT EXISTS idx_image_embeddings_type ON image_embeddings(embedding_type, model_name);
 CREATE INDEX IF NOT EXISTS idx_image_people_person ON image_people(person_id, confirmation_status);
 CREATE INDEX IF NOT EXISTS idx_map_generations_status ON map_generations(status, requested_at);

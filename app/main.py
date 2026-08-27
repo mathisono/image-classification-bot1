@@ -99,11 +99,17 @@ def dashboard(request: Request):
     jobs = {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')}
     workers = DB.execute("SELECT agent_name,worker_id,MAX(heartbeat_at) heartbeat,COUNT(*) jobs FROM jobs WHERE agent_name IS NOT NULL GROUP BY agent_name,worker_id ORDER BY heartbeat DESC LIMIT 25").fetchall()
     recent = DB.execute("SELECT j.*,i.filename FROM jobs j JOIN images i ON i.id=j.image_id ORDER BY j.id DESC LIMIT 25").fetchall()
+    face_stats = {
+        (r['face_detection_status'] or 'NOT_PROCESSED'): r['c']
+        for r in DB.execute('SELECT face_detection_status,COUNT(*) c FROM images GROUP BY face_detection_status')
+    }
+    detected_face_total = DB.execute('SELECT COUNT(*) c FROM detected_faces').fetchone()['c']
     browse_roots = [root for root in CFG.get('image_roots', []) if root.get('enabled', True)]
     return templates.TemplateResponse('dashboard.html', {
         'request': request, 'stats': stats, 'jobs': jobs, 'workers': workers, 'recent': recent,
         'total': sum(stats.values()), 'retry_total': stats.get('NEEDS_REPROCESS', 0),
         'failed_total': stats.get('FAILED', 0), 'cfg': CFG, 'browse_roots': browse_roots,
+        'face_stats': face_stats, 'detected_face_total': detected_face_total,
     })
 
 
@@ -213,7 +219,31 @@ def thumb(image_id: int):
 
 @app.get('/images/{image_id}', response_class=HTMLResponse)
 def image_detail(request: Request, image_id: int):
-    return templates.TemplateResponse('detail.html', {'request': request, 'row': DB.execute('SELECT * FROM images WHERE id=?', (image_id,)).fetchone()})
+    row = DB.execute('SELECT * FROM images WHERE id=?', (image_id,)).fetchone()
+    faces = DB.execute(
+        'SELECT * FROM detected_faces WHERE image_id=? ORDER BY face_index', (image_id,),
+    ).fetchall()
+    return templates.TemplateResponse(
+        'detail.html', {'request': request, 'row': row, 'faces': faces},
+    )
+
+
+@app.get('/faces/{face_id}.jpg')
+def face_crop(face_id: int):
+    row = DB.execute('SELECT crop_path FROM detected_faces WHERE id=?', (face_id,)).fetchone()
+    if not row or not row['crop_path']:
+        return JSONResponse({'error': 'no face crop'}, status_code=404)
+    path = Path(row['crop_path']).expanduser().resolve()
+    cache_root = Path(
+        CFG.get('faces', {}).get('cache_dir') or CFG.get('paths', {}).get('faces') or 'cache/faces'
+    ).expanduser().resolve()
+    try:
+        path.relative_to(cache_root)
+    except ValueError:
+        return JSONResponse({'error': 'invalid face crop path'}, status_code=403)
+    if not path.is_file():
+        return JSONResponse({'error': 'face crop is missing'}, status_code=404)
+    return FileResponse(path, media_type='image/jpeg')
 
 
 @app.post('/images/{image_id}/save')
@@ -245,4 +275,6 @@ def remove_failed_records():
 def api_stats():
     recover_expired_jobs(DB)
     return {'images': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM images GROUP BY status')},
-            'jobs': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')}}
+            'jobs': {r['status']: r['c'] for r in DB.execute('SELECT status,COUNT(*) c FROM jobs GROUP BY status')},
+            'face_processing': {(r['face_detection_status'] or 'NOT_PROCESSED'): r['c'] for r in DB.execute('SELECT face_detection_status,COUNT(*) c FROM images GROUP BY face_detection_status')},
+            'detected_faces': DB.execute('SELECT COUNT(*) c FROM detected_faces').fetchone()['c']}

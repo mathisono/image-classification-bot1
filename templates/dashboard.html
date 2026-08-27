@@ -1,6 +1,7 @@
 {% extends "base.html" %}{% block body %}
 <h1>OpenClaw Image Librarian</h1>
 <div class="card"><h2>Queue status</h2><p><b>Total images:</b> {{ total }}</p>{% for k,v in stats.items() %}<p><b>{{ k }}:</b> {{ v }}</p>{% endfor %}<h3>Jobs</h3>{% for k,v in jobs.items() %}<p><b>{{ k }}:</b> {{ v }}</p>{% endfor %}</div>
+<div class="card"><h2>Local face processing</h2><p><b>Stored individual faces:</b> {{ detected_face_total }}</p>{% for k,v in face_stats.items() %}<p><b>{{ k }}:</b> {{ v }}</p>{% endfor %}<p><small>Each stored face has a local crop, detector coordinates, and an ArcFace-compatible embedding for later recognition.</small></p></div>
 <div class="card">
   <h2>Choose a folder to scan</h2>
   <p>Browse within a configured image root, select a subdirectory, and scan only that folder tree.</p>

@@ -26,6 +26,7 @@ paths:
   database: "data/image_index.sqlite"
   thumbnails: "cache/thumbnails"
   analysis: "cache/analysis"
+  faces: "cache/faces"
   # Each GUI-requested Archive Map regeneration creates timestamped files here.
   map_snapshots: "data/map_snapshots"
 
@@ -77,6 +78,23 @@ workers:
   poll_seconds: 2
   lease_seconds: 120
   hard_timeout_seconds: 180
+
+# Face images and embeddings stay local. One dedicated CPU worker detects each
+# face with SCRFD and stores an ArcFace-compatible embedding for later matching.
+faces:
+  enabled: true
+  backend: "insightface"
+  model_pack: "buffalo_l"
+  model_root: "data/insightface"
+  cache_dir: "cache/faces"
+  detector_model: "scrfd-det-10g"
+  embedding_model: "arcface-w600k-r50"
+  providers:
+    - "CPUExecutionProvider"
+  ctx_id: -1
+  det_size: [640, 640]
+  det_thresh: 0.55
+  poll_seconds: 2
 
 vision:
   enabled: true

@@ -18,6 +18,7 @@ The current version intentionally keeps the workflow simple. Temporal, Qdrant, F
 - Optionally calls a local OpenAI-compatible vision model, such as LM Studio
 - Uses Pydantic AI to validate structured image-classification records before writing them to SQLite
 - Stores captions, descriptions, tags, objects, visible text, notes, status, confidence, retry focus, and error messages
+- Detects individual faces locally, stores review crops and face coordinates, and generates recognition-ready embeddings
 - Monitors classification quality and marks thin/missing records for retry
 - Provides a local FastAPI web GUI
 - Lets you edit image entries manually
@@ -356,6 +357,52 @@ The active prompt asks a short set of factual questions and requests concise
 JSON. It records the main subject, scene and image type, orientation, broad
 category, visible objects and text, and people/face counts without asking the
 model to infer identities.
+
+The prompt's face flag is only a prioritization hint. A separate local
+InsightFace worker performs the authoritative SCRFD detection pass and creates
+an ArcFace-compatible embedding for every detected face. The caption model is
+never trusted to create an identity or a biometric match.
+
+---
+
+## Face detection and later recognition
+
+Face processing is enabled in `config.yaml` and runs as one dedicated CPU
+service, `image-librarian-face-worker.service`. It processes confirmed identity
+references first, then archive analysis images. Images that the vision model
+already flagged as containing a face are prioritized during the initial
+backfill.
+
+For every detected face the app stores:
+
+- bounding box and five-point landmarks
+- detector confidence and a basic quality score
+- a local review crop under `cache/faces/`
+- a normalized floating-point face embedding in SQLite
+- detector and embedding model names for future migration/audit
+
+The original archive image remains read-only. Face crops, embeddings, the
+identity gallery, and the SQLite database are sensitive biometric data; keep
+the app bound to localhost and do not copy these files to a public location.
+
+The first face-worker start downloads the configured InsightFace model pack to
+`data/insightface/`. The bundled pretrained InsightFace models have their own
+licensing terms; review them before any non-personal or commercial use.
+
+Check progress with:
+
+```bash
+./control.sh status
+curl -s http://127.0.0.1:8765/api/stats
+```
+
+`face_processing.COMPLETE` counts images checked by the dedicated detector,
+including images where no face was found. `detected_faces` is the number of
+individual face records with embeddings ready for a later recognition matcher.
+
+Confirmed references uploaded under **People** must contain exactly one
+detectable face. Once their status is `READY`, they also have an embedding and
+can safely be used as a labeled gallery in the later matching phase.
 
 ---
 

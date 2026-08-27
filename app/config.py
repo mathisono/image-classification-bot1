@@ -22,11 +22,12 @@ def _normalize_roots(raw_roots):
 def load_config(path: str):
     import yaml
     raw = yaml.safe_load(Path(path).read_text()) or {}
-    cfg = {key: (raw.get(key, {}) or {}) for key in ('server', 'paths', 'safety', 'vision', 'scanner', 'workers', 'openclaw', 'database_sync', 'archive_map')}
+    cfg = {key: (raw.get(key, {}) or {}) for key in ('server', 'paths', 'safety', 'vision', 'scanner', 'workers', 'faces', 'openclaw', 'database_sync', 'archive_map')}
     cfg['image_roots'] = _normalize_roots(raw.get('image_roots', []))
     cfg['paths'].setdefault('database', 'data/image_index.sqlite')
     cfg['paths'].setdefault('thumbnails', 'cache/thumbnails')
     cfg['paths'].setdefault('analysis', 'cache/analysis')
+    cfg['paths'].setdefault('faces', 'cache/faces')
     cfg['paths'].setdefault('map_snapshots', 'data/map_snapshots')
     cfg['safety'].setdefault('max_original_file_mb', 300)
     cfg['safety'].setdefault('max_decode_pixels', 100000000)
@@ -39,6 +40,18 @@ def load_config(path: str):
     cfg['workers'].setdefault('poll_seconds', 2)
     cfg['workers'].setdefault('lease_seconds', 120)
     cfg['workers'].setdefault('hard_timeout_seconds', 75)
+    cfg['faces'].setdefault('enabled', False)
+    cfg['faces'].setdefault('backend', 'insightface')
+    cfg['faces'].setdefault('model_pack', 'buffalo_l')
+    cfg['faces'].setdefault('model_root', 'data/insightface')
+    cfg['faces'].setdefault('cache_dir', cfg['paths']['faces'])
+    cfg['faces'].setdefault('detector_model', 'scrfd-det-10g')
+    cfg['faces'].setdefault('embedding_model', 'arcface-w600k-r50')
+    cfg['faces'].setdefault('providers', ['CPUExecutionProvider'])
+    cfg['faces'].setdefault('ctx_id', -1)
+    cfg['faces'].setdefault('det_size', [640, 640])
+    cfg['faces'].setdefault('det_thresh', 0.55)
+    cfg['faces'].setdefault('poll_seconds', 2)
     cfg['database_sync'].setdefault('enabled', False)
     cfg['database_sync'].setdefault('share_copy', '')
     cfg['database_sync'].setdefault('interval_seconds', 300)

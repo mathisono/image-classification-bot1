@@ -11,6 +11,7 @@ VISION_AGENT="${OPENCLAW_VISION_AGENT:-betty}"
 WEB_UNIT="image-librarian-web.service"
 WORKER_UNIT_PREFIX="image-librarian-worker-"
 SYNC_UNIT="image-librarian-db-sync.service"
+FACE_UNIT="image-librarian-face-worker.service"
 
 command -v systemctl >/dev/null || { echo "systemctl is required" >&2; exit 1; }
 command -v systemd-run >/dev/null || { echo "systemd-run is required" >&2; exit 1; }
@@ -121,6 +122,10 @@ sync_enabled() {
   [ "$(read_config_value database_sync.enabled)" = "True" ] || [ "$(read_config_value database_sync.enabled)" = "true" ]
 }
 
+faces_enabled() {
+  [ "$(read_config_value faces.enabled)" = "True" ] || [ "$(read_config_value faces.enabled)" = "true" ]
+}
+
 sync_now() {
   check_roots
   "$PYTHON" -m app.db_sync --config "$CONFIG" --once
@@ -141,6 +146,14 @@ start_all() {
   start_unit "$WEB_UNIT" "Image Librarian web UI" \
     --setenv="IMAGE_LIBRARIAN_CONFIG=$CONFIG" \
     "$PYTHON" -m uvicorn app.main:app --host "$host" --port "$port"
+
+  if faces_enabled; then
+    start_unit "$FACE_UNIT" "Image Librarian face detector and embedding worker" \
+      --setenv="IMAGE_LIBRARIAN_CONFIG=$CONFIG" \
+      "$PYTHON" -m app.face_worker --config "$CONFIG"
+  elif unit_loaded "$FACE_UNIT"; then
+    stop_unit "$FACE_UNIT"
+  fi
 
   for i in $(seq 1 "$count"); do
     local worker="betty_image_worker_$i"
@@ -182,6 +195,9 @@ stop_all() {
     [ -n "$unit" ] || continue
     stop_unit "$unit"
   done < <(list_worker_units)
+  if unit_loaded "$FACE_UNIT"; then
+    stop_unit "$FACE_UNIT"
+  fi
   if unit_loaded "$SYNC_UNIT"; then
     stop_unit "$SYNC_UNIT"
   fi
@@ -198,7 +214,7 @@ stop_all() {
 status_all() {
   local unit state pid description
   local found=0
-  for unit in "$WEB_UNIT" $(list_worker_units) "$SYNC_UNIT"; do
+  for unit in "$WEB_UNIT" $(list_worker_units) "$FACE_UNIT" "$SYNC_UNIT"; do
     unit_loaded "$unit" || continue
     found=1
     state="$(systemctl --user show "$unit" --property=ActiveState --value)"
@@ -213,7 +229,7 @@ status_all() {
 logs_all() {
   local unit
   local -a journal_args=()
-  for unit in "$WEB_UNIT" $(list_worker_units) "$SYNC_UNIT"; do
+  for unit in "$WEB_UNIT" $(list_worker_units) "$FACE_UNIT" "$SYNC_UNIT"; do
     unit_loaded "$unit" || continue
     journal_args+=(--unit="$unit")
   done

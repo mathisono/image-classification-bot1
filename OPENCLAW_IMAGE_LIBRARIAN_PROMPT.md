@@ -26,6 +26,8 @@ Before reporting that the service is running, verify `./control.sh status` and p
 - Vision model: `zai-org/glm-4.6v-flash`
 - Queue workers: three user-systemd services with worker IDs
   `betty_image_worker_1` through `betty_image_worker_3`
+- Face worker: one local CPU service using SCRFD detection and ArcFace-compatible
+  embeddings; it does not ask the caption model to infer identity
 
 The coordinator must not perform image classifications itself. Betty workers claim jobs from the durable SQLite queue and record Betty as `agent_name` with a unique worker ID.
 
@@ -34,6 +36,11 @@ the configured number of transient user-systemd worker units. A worker forks a
 short-lived child while classifying a job, so duplicate-looking parent/child
 commands in `ps` are expected. Restart the services after changing
 `config.yaml` because workers load configuration at startup.
+
+The face worker is separate from the Betty caption queue. Treat
+`images.face_detection_status='COMPLETE'` plus rows in `detected_faces` as the
+authoritative evidence that faces have been prepared for later recognition;
+`images.face_detected` by itself is only a vision-model hint.
 
 ## Windows archive requirement
 

@@ -21,6 +21,9 @@ cd ~/image_librarian
 - `image-librarian-worker-1.service` through
   `image-librarian-worker-3.service` run
   `betty_image_worker_1` through `betty_image_worker_3`.
+- `image-librarian-face-worker.service` runs one local CPU face-detection and
+  embedding process. It consumes `NOT_PROCESSED` analysis images and confirmed
+  identity references without sending face data to the vision endpoint.
 - `image-librarian-db-sync.service` is also started when
   `database_sync.enabled` is true.
 
@@ -71,6 +74,8 @@ requests. Otherwise they provide queue resilience but may reduce throughput.
 - The default legacy JSON fallback is off, avoiding a second full inference
   after a structured-output failure.
 - The dashboard provides an assignment and completion audit.
+- Dedicated face states (`NOT_PROCESSED`, `PROCESSING`, `COMPLETE`, and
+  `FAILED`) keep face backfill progress separate from caption-job status.
 
 ## One-job validation
 
